@@ -1,4 +1,4 @@
-﻿using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.DataTransferObjects;
 using ReelScore.Api.Models;
 using ReelScore.Api.Repositories;
 
@@ -7,12 +7,12 @@ namespace ReelScore.Api.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
-    
+
     public UserService(IUserRepository userRepository)
     {
         _userRepository = userRepository;
     }
-    
+
     public UserDto MapUserToDto(User user)
     {
         return new UserDto

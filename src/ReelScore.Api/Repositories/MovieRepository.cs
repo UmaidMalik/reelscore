@@ -1,27 +1,27 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
-using ReelScore.Api.Models;
 using Npgsql;
+using ReelScore.Api.Models;
 
 namespace ReelScore.Api.Repositories;
 
 public class MovieRepository : IMovieRepository
 {
     private readonly MovieRatingDbContext _context;
-    
+
     public MovieRepository(MovieRatingDbContext context)
     {
         _context = context;
     }
-    
+
     public async Task<IEnumerable<Movie>> GetAllMoviesAsync()
-    {   
+    {
         return await _context.Movies
             .Include(m => m.Ratings)
             .ToListAsync();
     }
-    
+
     public async Task<Movie?> GetMovieByIdAsync(long id)
     {
         if (!await MovieExistsAsync(id))
@@ -36,10 +36,10 @@ public class MovieRepository : IMovieRepository
     {
         // Adding the movie to the context
         var entityToAdd = _context.Movies.Add(movie);
-        
+
         // asynchronously saving the changes to the database
         await _context.SaveChangesAsync();
-        
+
         // returning the added movie
         return entityToAdd.Entity;
     }
@@ -58,7 +58,7 @@ public class MovieRepository : IMovieRepository
 
     public async Task<Movie?> DeleteMovieAsync(long id)
     {
-        if (!await MovieExistsAsync(id)) 
+        if (!await MovieExistsAsync(id))
         {
             throw new ArgumentException($"Movie with id {id} not found");
         }
@@ -85,5 +85,5 @@ public class MovieRepository : IMovieRepository
     {
         return await _context.Movies.AnyAsync(m => m.MovieId == id);
     }
-    
+
 }

@@ -1,11 +1,11 @@
-﻿using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.DataTransferObjects;
 using ReelScore.Api.Models;
 
 namespace ReelScore.Api.Services;
 
 public class RatingService : IRatingService
 {
-    
+
     public RatingDto MapRatingToDto(Rating rating)
     {
         return new RatingDto

@@ -1,4 +1,4 @@
-﻿using ReelScore.Api.Models;
+using ReelScore.Api.Models;
 
 namespace ReelScore.Api.Repositories;
 

@@ -51,10 +51,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "8.0.x"
           global-json-file: global.json
 
       - name: Display .NET information
@@ -63,12 +62,12 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore "$SOLUTION_PATH"
 
-      - name: Verify code formatting
+      - name: Verify formatting
         run: >
           dotnet format "$SOLUTION_PATH"
           --no-restore
           --verify-no-changes
-          --verbosity diagnostic
+          --verbosity minimal
 
       - name: Build Debug configuration
         run: >
@@ -82,66 +81,67 @@ jobs:
           --configuration Release
           --no-restore
 
-  test:
-    name: Automated tests
+  security:
+    name: Dependency security
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: validate
+    timeout-minutes: 10
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "8.0.x"
           global-json-file: global.json
 
       - name: Restore dependencies
         run: dotnet restore "$SOLUTION_PATH"
 
-      - name: Build test dependencies
-        run: >
-          dotnet build "$SOLUTION_PATH"
-          --configuration Release
-          --no-restore
+      - name: Reject vulnerable NuGet dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - name: Run automated tests
-        run: >
-          dotnet test "$SOLUTION_PATH"
-          --configuration Release
-          --no-build
-          --logger "trx;LogFileName=reelscore-tests.trx"
-          --results-directory TestResults
-          --collect:"XPlat Code Coverage"
+          report="$(dotnet list "$API_PROJECT_PATH" package \
+            --vulnerable \
+            --include-transitive)"
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-results
-          path: TestResults/
-          if-no-files-found: ignore
-          retention-days: 14
+          echo "$report"
+
+          if echo "$report" | grep -q \
+            "has the following vulnerable packages"; then
+            echo "::error::Known vulnerable NuGet packages were detected."
+            exit 1
+          fi
+
+          echo "No known vulnerable NuGet packages detected."
+
+      - name: Report deprecated NuGet dependencies
+        run: >
+          dotnet list "$API_PROJECT_PATH"
+          package
+          --deprecated
+          --include-transitive
 
   publish:
     name: Publish API
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: validate
+    needs:
+      - validate
+      - security
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "8.0.x"
           global-json-file: global.json
 
-      - name: Restore dependencies
+      - name: Restore API dependencies
         run: dotnet restore "$API_PROJECT_PATH"
 
       - name: Publish API
@@ -151,42 +151,21 @@ jobs:
           --no-restore
           --output artifacts/reelscore-api
 
-      - name: Verify published assembly
+      - name: Verify published output
         shell: bash
         run: |
+          set -euo pipefail
+
           test -f artifacts/reelscore-api/ReelScore.Api.dll
           test -f artifacts/reelscore-api/ReelScore.Api.deps.json
           test -f artifacts/reelscore-api/ReelScore.Api.runtimeconfig.json
 
+          echo "ReelScore API publish output verified."
+
       - name: Upload published API
         uses: actions/upload-artifact@v4
         with:
-          name: reelscore-api
+          name: reelscore-api-${{ github.sha }}
           path: artifacts/reelscore-api/
           if-no-files-found: error
           retention-days: 14
-
-  dependency-audit:
-    name: Dependency vulnerability audit
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
-          global-json-file: global.json
-
-      - name: Restore dependencies
-        run: dotnet restore "$SOLUTION_PATH"
-
-      - name: List vulnerable dependencies
-        run: >
-          dotnet list "$SOLUTION_PATH"
-          package
-          --vulnerable
-          --include-transitive

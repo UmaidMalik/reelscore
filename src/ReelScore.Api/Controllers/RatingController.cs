@@ -95,7 +95,10 @@ namespace ReelScore.Api.Controllers
                 }
             }
 
-            return CreatedAtAction("GetRating", new { id = rating.RatingId }, rating);
+            return CreatedAtAction("GetRating", new
+            {
+                id = rating.RatingId
+            }, rating);
         }
 
         // DELETE: api/Rating/5

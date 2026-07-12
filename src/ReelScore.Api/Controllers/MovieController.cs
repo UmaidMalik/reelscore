@@ -12,7 +12,7 @@ namespace ReelScore.Api.Controllers
     {
 
         private readonly IMovieService _movieService;
-        
+
         public MovieController(IMovieService movieService)
         {
             _movieService = movieService;
@@ -43,12 +43,12 @@ namespace ReelScore.Api.Controllers
                 ReleaseYear = movieDto.ReleaseYear
             };
             return Ok(await _movieService.AddMovie(movie));
-            
+
         }
 
         // PUT api/<MovieController>/5
         [HttpPut("{id}")]
-        public async Task<ActionResult<Movie>> PutMovie(long id,[FromBody] MovieDto movieDto) 
+        public async Task<ActionResult<Movie>> PutMovie(long id, [FromBody] MovieDto movieDto)
         {
             Movie movie = new Movie
             {
@@ -66,7 +66,7 @@ namespace ReelScore.Api.Controllers
         {
             return Ok(await _movieService.DeleteMovie(id));
         }
-        
+
         private async Task<bool> MovieExists(long id)
         {
             return await _movieService.MovieExists(id);

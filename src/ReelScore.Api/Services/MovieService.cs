@@ -1,4 +1,4 @@
-﻿using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.DataTransferObjects;
 using ReelScore.Api.Models;
 using ReelScore.Api.Repositories;
 
@@ -22,7 +22,7 @@ public class MovieService : IMovieService
             ReleaseYear = movie.ReleaseYear
         };
     }
-    
+
     public Task<IEnumerable<Movie>> GetAllMovies()
     {
         return _movieRepository.GetAllMoviesAsync();
