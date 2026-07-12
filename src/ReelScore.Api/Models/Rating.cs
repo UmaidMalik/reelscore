@@ -1,13 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Runtime.CompilerServices;
 
 namespace ReelScore.Api.Models;
 
 public class Rating
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Column("rating_id")]
     public long RatingId
     {
@@ -16,12 +15,13 @@ public class Rating
 
     [Required]
     [Range(1, 10)]
-    [Column("rating")]
-    public int MovieRating
+    [Column("score")]
+    public int Score
     {
         get; set;
     }
 
+    [StringLength(2000)]
     [Column("review")]
     public string? Review
     {
@@ -48,35 +48,4 @@ public class Rating
     }
 
     public Movie Movie { get; set; } = null!;
-
-    public Rating(
-        long ratingId,
-        int movieRating,
-        string? review,
-        long userId,
-        long movieId)
-    {
-        RatingId = ratingId;
-        MovieRating = movieRating;
-        Review = review;
-        UserId = userId;
-        MovieId = movieId;
-    }
-
-    public Rating(
-        int movieRating,
-        string? review,
-        long userId,
-        long movieId)
-    {
-        MovieRating = movieRating;
-        Review = review;
-        UserId = userId;
-        MovieId = movieId;
-    }
-
-    public Rating()
-    {
-    }
-
 }

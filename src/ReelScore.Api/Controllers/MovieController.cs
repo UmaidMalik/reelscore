@@ -1,75 +1,116 @@
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ReelScore.Api.DataTransferObjects;
-using ReelScore.Api.Models;
 using ReelScore.Api.Services;
 
-namespace ReelScore.Api.Controllers
+namespace ReelScore.Api.Controllers;
+
+[ApiController]
+[Route("api/movies")]
+public sealed class MovieController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class MovieController : ControllerBase
+    private readonly IMovieService _movieService;
+
+    public MovieController(IMovieService movieService)
     {
+        _movieService = movieService;
+    }
 
-        private readonly IMovieService _movieService;
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyCollection<MovieResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<MovieResponse>>> GetMovies(
+        CancellationToken cancellationToken)
+    {
+        var movies = await _movieService.GetAllMoviesAsync(cancellationToken);
 
-        public MovieController(IMovieService movieService)
+        return Ok(movies);
+    }
+
+    [HttpGet("{movieId:long}")]
+    [ProducesResponseType(typeof(MovieResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MovieResponse>> GetMovie(
+        long movieId,
+        CancellationToken cancellationToken)
+    {
+        var movie = await _movieService.GetMovieByIdAsync(
+            movieId,
+            cancellationToken);
+
+        if (movie is null)
         {
-            _movieService = movieService;
-        }
-
-        // GET: api/<MovieController>
-        [HttpGet]
-        public async Task<IActionResult> GetMovies()
-        {
-            return Ok(await _movieService.GetAllMovies());
-        }
-
-        // GET api/<MovieController>/5
-        [HttpGet("{movieId}")]
-        public async Task<IActionResult> GetMovie(long movieId)
-        {
-            return Ok(await _movieService.GetMovieById(movieId));
-        }
-
-        // POST api/<MovieController>
-        [HttpPost]
-        public async Task<ActionResult<Movie>> PostMovie(MovieDto movieDto)
-        {
-            Movie movie = new Movie
+            return NotFound(new
             {
-                Title = movieDto.Title,
-                Summary = movieDto.Summary,
-                ReleaseYear = movieDto.ReleaseYear
-            };
-            return Ok(await _movieService.AddMovie(movie));
-
+                message = $"Movie with ID {movieId} was not found."
+            });
         }
 
-        // PUT api/<MovieController>/5
-        [HttpPut("{id}")]
-        public async Task<ActionResult<Movie>> PutMovie(long id, [FromBody] MovieDto movieDto)
-        {
-            Movie movie = new Movie
+        return Ok(movie);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(MovieResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<MovieResponse>> PostMovie(
+        [FromBody] CreateMovieRequest request,
+        CancellationToken cancellationToken)
+    {
+        var movie = await _movieService.CreateMovieAsync(
+            request,
+            cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetMovie),
+            new
             {
-                MovieId = id,
-                Title = movieDto.Title,
-                Summary = movieDto.Summary,
-                ReleaseYear = movieDto.ReleaseYear
-            };
-            return Ok(await _movieService.UpdateMovie(id, movie));
+                movieId = movie.MovieId
+            },
+            movie);
+    }
+
+    [HttpPut("{movieId:long}")]
+    [ProducesResponseType(typeof(MovieResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MovieResponse>> PutMovie(
+        long movieId,
+        [FromBody] UpdateMovieRequest request,
+        CancellationToken cancellationToken)
+    {
+        var movie = await _movieService.UpdateMovieAsync(
+            movieId,
+            request,
+            cancellationToken);
+
+        if (movie is null)
+        {
+            return NotFound(new
+            {
+                message = $"Movie with ID {movieId} was not found."
+            });
         }
 
-        // DELETE api/<MovieController>/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteMovie(long id)
+        return Ok(movie);
+    }
+
+    [HttpDelete("{movieId:long}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteMovie(
+        long movieId,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await _movieService.DeleteMovieAsync(
+            movieId,
+            cancellationToken);
+
+        if (!deleted)
         {
-            return Ok(await _movieService.DeleteMovie(id));
+            return NotFound(new
+            {
+                message = $"Movie with ID {movieId} was not found."
+            });
         }
 
-        private async Task<bool> MovieExists(long id)
-        {
-            return await _movieService.MovieExists(id);
-        }
+        return NoContent();
     }
 }

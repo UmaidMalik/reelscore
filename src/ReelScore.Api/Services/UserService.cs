@@ -4,7 +4,7 @@ using ReelScore.Api.Repositories;
 
 namespace ReelScore.Api.Services;
 
-public class UserService : IUserService
+public sealed class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
 
@@ -13,53 +13,146 @@ public class UserService : IUserService
         _userRepository = userRepository;
     }
 
-    public UserDto MapUserToDto(User user)
+    public async Task<IReadOnlyCollection<UserResponse>> GetAllUsersAsync(
+        CancellationToken cancellationToken = default)
     {
-        return new UserDto
+        var users = await _userRepository.GetAllAsync(cancellationToken);
+
+        return users
+            .Select(MapToResponse)
+            .ToList();
+    }
+
+    public async Task<UserResponse?> GetUserByIdAsync(
+        long userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(
+            userId,
+            cancellationToken);
+
+        return user is null
+            ? null
+            : MapToResponse(user);
+    }
+
+    public async Task<CreateUserResult> CreateUserAsync(
+        CreateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedUsername = request.Username.Trim();
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var emailExists = await _userRepository.EmailExistsAsync(
+            normalizedEmail,
+            cancellationToken: cancellationToken);
+
+        if (emailExists)
+        {
+            return new CreateUserResult(
+                CreateUserStatus.EmailAlreadyExists);
+        }
+
+        var usernameExists = await _userRepository.UsernameExistsAsync(
+            normalizedUsername,
+            cancellationToken: cancellationToken);
+
+        if (usernameExists)
+        {
+            return new CreateUserResult(
+                CreateUserStatus.UsernameAlreadyExists);
+        }
+
+        var user = new User
+        {
+            Username = normalizedUsername,
+            Email = normalizedEmail,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var createdUser = await _userRepository.AddAsync(
+            user,
+            cancellationToken);
+
+        return new CreateUserResult(
+            CreateUserStatus.Created,
+            MapToResponse(createdUser));
+    }
+
+    public async Task<UpdateUserResult> UpdateUserAsync(
+        long userId,
+        UpdateUserRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var existingUser = await _userRepository.GetByIdAsync(
+            userId,
+            cancellationToken);
+
+        if (existingUser is null)
+        {
+            return new UpdateUserResult(
+                UpdateUserStatus.NotFound);
+        }
+
+        var normalizedUsername = request.Username.Trim();
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var emailExists = await _userRepository.EmailExistsAsync(
+            normalizedEmail,
+            excludingUserId: userId,
+            cancellationToken: cancellationToken);
+
+        if (emailExists)
+        {
+            return new UpdateUserResult(
+                UpdateUserStatus.EmailAlreadyExists);
+        }
+
+        var usernameExists = await _userRepository.UsernameExistsAsync(
+            normalizedUsername,
+            excludingUserId: userId,
+            cancellationToken: cancellationToken);
+
+        if (usernameExists)
+        {
+            return new UpdateUserResult(
+                UpdateUserStatus.UsernameAlreadyExists);
+        }
+
+        var updatedUser = await _userRepository.UpdateAsync(
+            userId,
+            normalizedUsername,
+            normalizedEmail,
+            cancellationToken);
+
+        if (updatedUser is null)
+        {
+            return new UpdateUserResult(
+                UpdateUserStatus.NotFound);
+        }
+
+        return new UpdateUserResult(
+            UpdateUserStatus.Updated,
+            MapToResponse(updatedUser));
+    }
+
+    public Task<bool> DeleteUserAsync(
+        long userId,
+        CancellationToken cancellationToken = default)
+    {
+        return _userRepository.DeleteAsync(
+            userId,
+            cancellationToken);
+    }
+
+    private static UserResponse MapToResponse(User user)
+    {
+        return new UserResponse
         {
             UserId = user.UserId,
             Username = user.Username,
-            Email = user.Email
+            Email = user.Email,
+            CreatedAt = user.CreatedAt
         };
-    }
-
-    public Task<IEnumerable<User>> GetAllUsers()
-    {
-        return _userRepository.GetAllUsersAsync();
-    }
-
-    public Task<User?> GetUserById(long userId)
-    {
-        return _userRepository.GetUserByIdAsync(userId);
-    }
-
-    public Task<User?> AddUser(User user)
-    {
-        return _userRepository.AddUserAsync(user);
-    }
-
-    public Task<User?> UpdateUser(long userId, User user)
-    {
-        return _userRepository.UpdateUserAsync(userId, user);
-    }
-
-    public Task<User?> DeleteUser(long userId)
-    {
-        return _userRepository.DeleteUserAsync(userId);
-    }
-
-    public Task<IEnumerable<User>> GetUsersByUsername(string username)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<IEnumerable<User>> GetUsersByEmail(string email)
-    {
-        throw new NotImplementedException();
-    }
-
-    public Task<bool> UserExists(long userId)
-    {
-        return _userRepository.UserExistsAsync(userId);
     }
 }

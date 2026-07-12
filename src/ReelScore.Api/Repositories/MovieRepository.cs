@@ -1,12 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using ReelScore.Api.Models;
 
 namespace ReelScore.Api.Repositories;
 
-public class MovieRepository : IMovieRepository
+public sealed class MovieRepository : IMovieRepository
 {
     private readonly MovieRatingDbContext _context;
 
@@ -15,75 +12,123 @@ public class MovieRepository : IMovieRepository
         _context = context;
     }
 
-    public async Task<IEnumerable<Movie>> GetAllMoviesAsync()
+    public async Task<IReadOnlyCollection<Movie>> GetAllAsync(
+        CancellationToken cancellationToken = default)
     {
         return await _context.Movies
-            .Include(m => m.Ratings)
-            .ToListAsync();
+            .AsNoTracking()
+            .Include(movie => movie.Ratings)
+            .OrderBy(movie => movie.Title)
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<Movie?> GetMovieByIdAsync(long id)
+    public async Task<Movie?> GetByIdAsync(
+        long movieId,
+        CancellationToken cancellationToken = default)
     {
-        if (!await MovieExistsAsync(id))
-        {
-            throw new ArgumentException($"Movie with id {id} not found");
-        }
         return await _context.Movies
-            .Include(m => m.Ratings).FirstOrDefaultAsync(m => m.MovieId == id);
+            .AsNoTracking()
+            .Include(movie => movie.Ratings)
+            .FirstOrDefaultAsync(
+                movie => movie.MovieId == movieId,
+                cancellationToken);
     }
 
-    public async Task<Movie?> AddMovieAsync(Movie movie)
+    public async Task<IReadOnlyCollection<Movie>> SearchAsync(
+        string? title,
+        int? releaseYear,
+        CancellationToken cancellationToken = default)
     {
-        // Adding the movie to the context
-        var entityToAdd = _context.Movies.Add(movie);
+        var query = _context.Movies
+            .AsNoTracking()
+            .Include(movie => movie.Ratings)
+            .AsQueryable();
 
-        // asynchronously saving the changes to the database
-        await _context.SaveChangesAsync();
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            var normalizedTitle = title.Trim();
 
-        // returning the added movie
-        return entityToAdd.Entity;
+            query = query.Where(movie =>
+                EF.Functions.ILike(
+                    movie.Title,
+                    $"%{normalizedTitle}%"));
+        }
+
+        if (releaseYear.HasValue)
+        {
+            query = query.Where(movie =>
+                movie.ReleaseYear == releaseYear.Value);
+        }
+
+        return await query
+            .OrderBy(movie => movie.Title)
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<Movie?> UpdateMovieAsync(long id, Movie movie)
+    public async Task<Movie> AddAsync(
+        Movie movie,
+        CancellationToken cancellationToken = default)
     {
-        var existingMovie = await GetMovieByIdAsync(id);
-        if (existingMovie == null)
-        {
-            throw new ArgumentException($"Movie with id {id} not found");
-        }
-        _context.Entry(existingMovie).CurrentValues.SetValues(movie);
-        await _context.SaveChangesAsync();
-        return existingMovie;
-    }
+        _context.Movies.Add(movie);
 
-    public async Task<Movie?> DeleteMovieAsync(long id)
-    {
-        if (!await MovieExistsAsync(id))
-        {
-            throw new ArgumentException($"Movie with id {id} not found");
-        }
-        var movie = await GetMovieByIdAsync(id);
-        if (movie != null)
-        {
-            _context.Movies.Remove(movie);
-            await _context.SaveChangesAsync();
-        }
+        await _context.SaveChangesAsync(cancellationToken);
+
         return movie;
     }
 
-    public Task<IEnumerable<Movie>> GetMoviesByTitleAsync(string title)
+    public async Task<Movie?> UpdateAsync(
+        long movieId,
+        string title,
+        string? summary,
+        int releaseYear,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var movie = await _context.Movies
+            .FirstOrDefaultAsync(
+                existingMovie => existingMovie.MovieId == movieId,
+                cancellationToken);
+
+        if (movie is null)
+        {
+            return null;
+        }
+
+        movie.Title = title;
+        movie.Summary = summary;
+        movie.ReleaseYear = releaseYear;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return movie;
     }
 
-    public Task<IEnumerable<Movie>> GetMoviesByReleaseYearAsync(int releaseYear)
+    public async Task<bool> DeleteAsync(
+        long movieId,
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var movie = await _context.Movies
+            .FirstOrDefaultAsync(
+                existingMovie => existingMovie.MovieId == movieId,
+                cancellationToken);
+
+        if (movie is null)
+        {
+            return false;
+        }
+
+        _context.Movies.Remove(movie);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return true;
     }
 
-    public async Task<bool> MovieExistsAsync(long id)
+    public Task<bool> ExistsAsync(
+        long movieId,
+        CancellationToken cancellationToken = default)
     {
-        return await _context.Movies.AnyAsync(m => m.MovieId == id);
+        return _context.Movies.AnyAsync(
+            movie => movie.MovieId == movieId,
+            cancellationToken);
     }
-
 }
