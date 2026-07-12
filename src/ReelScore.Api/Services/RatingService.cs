@@ -1,4 +1,4 @@
-﻿using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.DataTransferObjects;
 using ReelScore.Api.Models;
 
 namespace ReelScore.Api.Services;

@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
-using ReelScore.Api.Models;
 using Npgsql;
+using ReelScore.Api.Models;
 
 namespace ReelScore.Api.Repositories;
 

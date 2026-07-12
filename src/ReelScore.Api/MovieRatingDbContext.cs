@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ReelScore.Api.Models;
 
 namespace ReelScore.Api;
@@ -10,9 +10,18 @@ public class MovieRatingDbContext : DbContext
 
     }
 
-    public DbSet<User> Users { get; set; }
-    public DbSet<Movie> Movies { get; set; }
-    public DbSet<Rating> Ratings { get; set; }
+    public DbSet<User> Users
+    {
+        get; set;
+    }
+    public DbSet<Movie> Movies
+    {
+        get; set;
+    }
+    public DbSet<Rating> Ratings
+    {
+        get; set;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

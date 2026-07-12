@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ReelScore.Api.Models;
@@ -8,22 +8,37 @@ public class Movie
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     [Column("movie_id")]
-    public long MovieId { get; set; }
+    public long MovieId
+    {
+        get; set;
+    }
 
     [Required]
     [StringLength(255)]
     [Column("title")]
-    public string? Title { get; set; }
+    public string? Title
+    {
+        get; set;
+    }
     [Column("summary")]
-    public string? Summary { get; set; }
+    public string? Summary
+    {
+        get; set;
+    }
 
     [Required]
     [Range(1900, 2100)]
     [Column("release_year")]
-    public int ReleaseYear { get; set; }
+    public int ReleaseYear
+    {
+        get; set;
+    }
 
     // Navigation Property: Movie has many Ratings
-    public ICollection<Rating> Ratings { get; set; }
+    public ICollection<Rating> Ratings
+    {
+        get; set;
+    }
 
     public Movie(long movieId, string title, string summary, int releaseYear)
     {
