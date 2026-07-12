@@ -1,15 +1,26 @@
-using ReelScore.Api.Models;
+using ReelScore.Api.DataTransferObjects;
 
 namespace ReelScore.Api.Services;
 
 public interface IUserService
 {
-    Task<IEnumerable<User>> GetAllUsers();
-    Task<User?> GetUserById(long userId);
-    Task<User?> AddUser(User user);
-    Task<User?> UpdateUser(long userId, User user);
-    Task<User?> DeleteUser(long userId);
-    Task<IEnumerable<User>> GetUsersByUsername(string username);
-    Task<IEnumerable<User>> GetUsersByEmail(string email);
-    Task<bool> UserExists(long userId);
+    Task<IReadOnlyCollection<UserResponse>> GetAllUsersAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<UserResponse?> GetUserByIdAsync(
+        long userId,
+        CancellationToken cancellationToken = default);
+
+    Task<CreateUserResult> CreateUserAsync(
+        CreateUserRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<UpdateUserResult> UpdateUserAsync(
+        long userId,
+        UpdateUserRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteUserAsync(
+        long userId,
+        CancellationToken cancellationToken = default);
 }

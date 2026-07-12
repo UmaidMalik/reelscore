@@ -1,125 +1,148 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ReelScore.Api;
-using ReelScore.Api.Models;
+using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.Services;
 
-namespace ReelScore.Api.Controllers
+namespace ReelScore.Api.Controllers;
+
+[ApiController]
+[Route("api/ratings")]
+public sealed class RatingController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class RatingController : ControllerBase
+    private readonly IRatingService _ratingService;
+
+    public RatingController(IRatingService ratingService)
     {
-        private readonly MovieRatingDbContext _context;
+        _ratingService = ratingService;
+    }
 
-        public RatingController(MovieRatingDbContext context)
+    [HttpGet]
+    [ProducesResponseType(
+        typeof(IReadOnlyCollection<RatingResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<RatingResponse>>> GetRatings(
+        CancellationToken cancellationToken)
+    {
+        var ratings = await _ratingService.GetAllRatingsAsync(
+            cancellationToken);
+
+        return Ok(ratings);
+    }
+
+    [HttpGet("{ratingId:long}")]
+    [ProducesResponseType(typeof(RatingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RatingResponse>> GetRating(
+        long ratingId,
+        CancellationToken cancellationToken)
+    {
+        var rating = await _ratingService.GetRatingByIdAsync(
+            ratingId,
+            cancellationToken);
+
+        if (rating is null)
         {
-            _context = context;
+            return NotFound(new
+            {
+                message = $"Rating with ID {ratingId} was not found."
+            });
         }
 
-        // GET: api/Rating
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Rating>>> GetRatings()
+        return Ok(rating);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(RatingResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<RatingResponse>> PostRating(
+        [FromBody] CreateRatingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _ratingService.CreateRatingAsync(
+            request,
+            cancellationToken);
+
+        if (result.Status == CreateRatingStatus.UserNotFound)
         {
-            return await _context.Ratings.ToListAsync();
+            return NotFound(new
+            {
+                message = $"User with ID {request.UserId} was not found."
+            });
         }
 
-        // GET: api/Rating/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Rating>> GetRating(long id)
+        if (result.Status == CreateRatingStatus.MovieNotFound)
         {
-            var rating = await _context.Ratings.FindAsync(id);
-
-            if (rating == null)
+            return NotFound(new
             {
-                return NotFound();
-            }
-
-            return rating;
+                message = $"Movie with ID {request.MovieId} was not found."
+            });
         }
 
-        // PUT: api/Rating/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutRating(long id, Rating rating)
+        if (result.Status == CreateRatingStatus.AlreadyExists)
         {
-            if (id != rating.RatingId)
+            return Conflict(new
             {
-                return BadRequest();
-            }
-
-            _context.Entry(rating).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!RatingExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
+                message =
+                    "This user has already rated this movie. Update the existing rating instead."
+            });
         }
 
-        // POST: api/Rating
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Rating>> PostRating(Rating rating)
-        {
-            _context.Ratings.Add(rating);
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                if (RatingExists(rating.RatingId))
-                {
-                    return Conflict();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+        var rating = result.Rating!;
 
-            return CreatedAtAction("GetRating", new
+        return CreatedAtAction(
+            nameof(GetRating),
+            new
             {
-                id = rating.RatingId
-            }, rating);
+                ratingId = rating.RatingId
+            },
+            rating);
+    }
+
+    [HttpPut("{ratingId:long}")]
+    [ProducesResponseType(typeof(RatingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RatingResponse>> PutRating(
+        long ratingId,
+        [FromBody] UpdateRatingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var rating = await _ratingService.UpdateRatingAsync(
+            ratingId,
+            request,
+            cancellationToken);
+
+        if (rating is null)
+        {
+            return NotFound(new
+            {
+                message = $"Rating with ID {ratingId} was not found."
+            });
         }
 
-        // DELETE: api/Rating/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRating(long id)
+        return Ok(rating);
+    }
+
+    [HttpDelete("{ratingId:long}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteRating(
+        long ratingId,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await _ratingService.DeleteRatingAsync(
+            ratingId,
+            cancellationToken);
+
+        if (!deleted)
         {
-            var rating = await _context.Ratings.FindAsync(id);
-            if (rating == null)
+            return NotFound(new
             {
-                return NotFound();
-            }
-
-            _context.Ratings.Remove(rating);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+                message = $"Rating with ID {ratingId} was not found."
+            });
         }
 
-        private bool RatingExists(long id)
-        {
-            return _context.Ratings.Any(e => e.RatingId == id);
-        }
+        return NoContent();
     }
 }

@@ -4,12 +4,34 @@ namespace ReelScore.Api.Repositories;
 
 public interface IMovieRepository
 {
-    Task<IEnumerable<Movie>> GetAllMoviesAsync();
-    Task<Movie?> GetMovieByIdAsync(long id);
-    Task<Movie?> AddMovieAsync(Movie movie);
-    Task<Movie?> UpdateMovieAsync(long id, Movie movie);
-    Task<Movie?> DeleteMovieAsync(long id);
-    Task<IEnumerable<Movie>> GetMoviesByTitleAsync(string title);
-    Task<IEnumerable<Movie>> GetMoviesByReleaseYearAsync(int releaseYear);
-    Task<bool> MovieExistsAsync(long id);
+    Task<IReadOnlyCollection<Movie>> GetAllAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<Movie?> GetByIdAsync(
+        long movieId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyCollection<Movie>> SearchAsync(
+        string? title,
+        int? releaseYear,
+        CancellationToken cancellationToken = default);
+
+    Task<Movie> AddAsync(
+        Movie movie,
+        CancellationToken cancellationToken = default);
+
+    Task<Movie?> UpdateAsync(
+        long movieId,
+        string title,
+        string? summary,
+        int releaseYear,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(
+        long movieId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsAsync(
+        long movieId,
+        CancellationToken cancellationToken = default);
 }

@@ -1,79 +1,154 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ReelScore.Api;
 using ReelScore.Api.DataTransferObjects;
-using ReelScore.Api.Models;
 using ReelScore.Api.Services;
 
-namespace ReelScore.Api.Controllers
+namespace ReelScore.Api.Controllers;
+
+[ApiController]
+[Route("api/users")]
+public sealed class UserController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class UserController : ControllerBase
+    private readonly IUserService _userService;
+
+    public UserController(IUserService userService)
     {
-        private readonly IUserService _userService;
+        _userService = userService;
+    }
 
-        public UserController(IUserService userService)
-        {
-            _userService = userService;
-        }
+    [HttpGet]
+    [ProducesResponseType(
+        typeof(IReadOnlyCollection<UserResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<UserResponse>>> GetUsers(
+        CancellationToken cancellationToken)
+    {
+        var users = await _userService.GetAllUsersAsync(cancellationToken);
 
-        // GET: api/User
-        [HttpGet]
-        public async Task<IActionResult> GetUsers()
-        {
-            return Ok(await _userService.GetAllUsers());
-        }
+        return Ok(users);
+    }
 
-        // GET: api/User/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(long userId)
-        {
-            return Ok(await _userService.GetUserById(userId));
-        }
+    [HttpGet("{userId:long}")]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserResponse>> GetUser(
+        long userId,
+        CancellationToken cancellationToken)
+    {
+        var user = await _userService.GetUserByIdAsync(
+            userId,
+            cancellationToken);
 
-        // PUT: api/User/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<ActionResult<User>> PutUser(long id, [FromBody] UserDto userDto)
+        if (user is null)
         {
-            User user = new User
+            return NotFound(new
             {
-                UserId = id,
-                Username = userDto.Username,
-                Email = userDto.Email
-            };
-            return Ok(await _userService.UpdateUser(id, user));
+                message = $"User with ID {userId} was not found."
+            });
         }
 
-        // POST: api/User
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser([FromBody] UserDto userDto)
+        return Ok(user);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UserResponse>> PostUser(
+        [FromBody] CreateUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _userService.CreateUserAsync(
+            request,
+            cancellationToken);
+
+        if (result.Status == CreateUserStatus.EmailAlreadyExists)
         {
-            User user = new User
+            return Conflict(new
             {
-                Username = userDto.Username,
-                Email = userDto.Email
-            };
-            return Ok(await _userService.AddUser(user));
+                message = "A user with this email already exists."
+            });
         }
 
-        // DELETE: api/User/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUser(long id)
+        if (result.Status == CreateUserStatus.UsernameAlreadyExists)
         {
-            return Ok(await _userService.DeleteUser(id));
+            return Conflict(new
+            {
+                message = "A user with this username already exists."
+            });
         }
 
-        private async Task<bool> UserExists(long id)
+        var user = result.User!;
+
+        return CreatedAtAction(
+            nameof(GetUser),
+            new
+            {
+                userId = user.UserId
+            },
+            user);
+    }
+
+    [HttpPut("{userId:long}")]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<UserResponse>> PutUser(
+        long userId,
+        [FromBody] UpdateUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _userService.UpdateUserAsync(
+            userId,
+            request,
+            cancellationToken);
+
+        if (result.Status == UpdateUserStatus.NotFound)
         {
-            return await _userService.UserExists(id);
+            return NotFound(new
+            {
+                message = $"User with ID {userId} was not found."
+            });
         }
+
+        if (result.Status == UpdateUserStatus.EmailAlreadyExists)
+        {
+            return Conflict(new
+            {
+                message = "A user with this email already exists."
+            });
+        }
+
+        if (result.Status == UpdateUserStatus.UsernameAlreadyExists)
+        {
+            return Conflict(new
+            {
+                message = "A user with this username already exists."
+            });
+        }
+
+        return Ok(result.User);
+    }
+
+    [HttpDelete("{userId:long}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteUser(
+        long userId,
+        CancellationToken cancellationToken)
+    {
+        var deleted = await _userService.DeleteUserAsync(
+            userId,
+            cancellationToken);
+
+        if (!deleted)
+        {
+            return NotFound(new
+            {
+                message = $"User with ID {userId} was not found."
+            });
+        }
+
+        return NoContent();
     }
 }

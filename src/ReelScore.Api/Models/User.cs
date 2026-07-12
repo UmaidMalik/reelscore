@@ -6,7 +6,7 @@ namespace ReelScore.Api.Models;
 public class User
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Column("user_id")]
     public long UserId
     {
@@ -19,7 +19,7 @@ public class User
     public string Username { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(100)]
+    [StringLength(254)]
     [Column("email")]
     public string Email { get; set; } = string.Empty;
 

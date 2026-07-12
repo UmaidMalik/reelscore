@@ -6,7 +6,7 @@ namespace ReelScore.Api.Models;
 public class Movie
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     [Column("movie_id")]
     public long MovieId
     {
@@ -18,6 +18,7 @@ public class Movie
     [Column("title")]
     public string Title { get; set; } = string.Empty;
 
+    [StringLength(5000)]
     [Column("summary")]
     public string? Summary
     {
@@ -25,7 +26,7 @@ public class Movie
     }
 
     [Required]
-    [Range(1900, 2100)]
+    [Range(1888, 2100)]
     [Column("release_year")]
     public int ReleaseYear
     {
