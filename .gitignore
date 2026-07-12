@@ -1,1 +1,17 @@
 .idea/
+
+# .NET build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# VS Code
+.vscode/
+
+# Local configuration and secrets
+.env
+appsettings.Local.json
