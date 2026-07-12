@@ -144,6 +144,9 @@ jobs:
       - name: Restore API dependencies
         run: dotnet restore "$API_PROJECT_PATH"
 
+      - name: Restore .NET tools
+        run: dotnet tool restore
+
       - name: Publish API
         run: >
           dotnet publish "$API_PROJECT_PATH"
