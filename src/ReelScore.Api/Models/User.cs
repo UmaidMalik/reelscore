@@ -16,27 +16,17 @@ public class User
     [Required]
     [StringLength(50)]
     [Column("username")]
-    public string? Username
-    {
-        get; set;
-    }
+    public string Username { get; set; } = string.Empty;
 
     [Required]
     [StringLength(100)]
     [Column("email")]
-    public string? Email
-    {
-        get; set;
-    }
+    public string Email { get; set; } = string.Empty;
 
     [Column("created_at")]
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation Property: User has many Ratings
-    public ICollection<Rating> Ratings
-    {
-        get; set;
-    }
+    public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
     public User(long userId, string username, string email)
     {

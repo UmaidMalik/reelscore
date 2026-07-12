@@ -16,10 +16,8 @@ public class Movie
     [Required]
     [StringLength(255)]
     [Column("title")]
-    public string? Title
-    {
-        get; set;
-    }
+    public string Title { get; set; } = string.Empty;
+
     [Column("summary")]
     public string? Summary
     {
@@ -34,11 +32,7 @@ public class Movie
         get; set;
     }
 
-    // Navigation Property: Movie has many Ratings
-    public ICollection<Rating> Ratings
-    {
-        get; set;
-    }
+    public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
     public Movie(long movieId, string title, string summary, int releaseYear)
     {
@@ -72,7 +66,10 @@ public class Movie
         }
 
         Movie movie = (Movie)obj;
-        return MovieId == movie.MovieId && Title == movie.Title && Summary == movie.Summary && ReleaseYear == movie.ReleaseYear;
+        return MovieId == movie.MovieId
+            && Title == movie.Title
+            && Summary == movie.Summary
+            && ReleaseYear == movie.ReleaseYear;
     }
 
     public override int GetHashCode()
