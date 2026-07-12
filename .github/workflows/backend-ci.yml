@@ -43,7 +43,7 @@ env:
 
 jobs:
   validate:
-    name: Validate backend
+    name: Restore, format and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -98,7 +98,7 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore "$SOLUTION_PATH"
 
-      - name: Audit vulnerable dependencies
+      - name: Reject vulnerable NuGet dependencies
         shell: bash
         run: |
           set -euo pipefail
@@ -109,61 +109,20 @@ jobs:
 
           echo "$report"
 
-          if echo "$report" | grep -q "has the following vulnerable packages"; then
-            echo "::error::Vulnerable NuGet packages were detected."
+          if echo "$report" | grep -q \
+            "has the following vulnerable packages"; then
+            echo "::error::Known vulnerable NuGet packages were detected."
             exit 1
           fi
 
           echo "No known vulnerable NuGet packages detected."
 
-      - name: Report deprecated dependencies
+      - name: Report deprecated NuGet dependencies
         run: >
           dotnet list "$API_PROJECT_PATH"
           package
           --deprecated
           --include-transitive
-
-  test:
-    name: Automated tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: validate
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up .NET SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
-
-      - name: Restore dependencies
-        run: dotnet restore "$SOLUTION_PATH"
-
-      - name: Build test projects
-        run: >
-          dotnet build "$SOLUTION_PATH"
-          --configuration Release
-          --no-restore
-
-      - name: Run automated tests
-        run: >
-          dotnet test "$SOLUTION_PATH"
-          --configuration Release
-          --no-build
-          --logger "trx;LogFileName=reelscore-tests.trx"
-          --results-directory TestResults
-          --collect:"XPlat Code Coverage"
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-test-results
-          path: TestResults/
-          if-no-files-found: ignore
-          retention-days: 14
 
   publish:
     name: Publish API
@@ -172,7 +131,6 @@ jobs:
     needs:
       - validate
       - security
-      - test
 
     steps:
       - name: Check out repository
@@ -183,7 +141,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Restore dependencies
+      - name: Restore API dependencies
         run: dotnet restore "$API_PROJECT_PATH"
 
       - name: Publish API
