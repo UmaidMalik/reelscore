@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.EntityFrameworkCore;
 using ReelScore.Api.Models;
-using MySqlConnector;
+using Npgsql;
 
 namespace ReelScore.Api.Repositories;
 
