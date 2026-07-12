@@ -13,6 +13,6 @@ public interface IMovieService
     Task<Movie?> DeleteMovie(long id);
     Task<IEnumerable<Movie>> GetMoviesByTitle(string title);
     Task<IEnumerable<Movie>> GetMoviesByReleaseYear(int releaseYear);
-  
+
     Task<bool> MovieExists(long id);
 }

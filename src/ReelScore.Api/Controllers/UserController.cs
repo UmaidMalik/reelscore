@@ -40,7 +40,7 @@ namespace ReelScore.Api.Controllers
         // PUT: api/User/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<ActionResult<User>> PutUser(long id,[FromBody] UserDto userDto)
+        public async Task<ActionResult<User>> PutUser(long id, [FromBody] UserDto userDto)
         {
             User user = new User
             {

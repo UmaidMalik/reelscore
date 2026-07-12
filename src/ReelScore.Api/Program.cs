@@ -22,7 +22,7 @@ var connectionString =
         "Connection string 'DefaultConnection' was not configured.");
 
 builder.Services.AddDbContext<MovieRatingDbContext>(options =>
-    options.UseNpgsql(connectionString));    
+    options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IMovieService, MovieService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();

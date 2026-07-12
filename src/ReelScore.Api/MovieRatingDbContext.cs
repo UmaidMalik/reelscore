@@ -7,9 +7,9 @@ public class MovieRatingDbContext : DbContext
 {
     public MovieRatingDbContext(DbContextOptions<MovieRatingDbContext> options) : base(options)
     {
-        
+
     }
-    
+
     public DbSet<User> Users { get; set; }
     public DbSet<Movie> Movies { get; set; }
     public DbSet<Rating> Ratings { get; set; }

@@ -5,7 +5,7 @@ namespace ReelScore.Api.Services;
 
 public class RatingService : IRatingService
 {
-    
+
     public RatingDto MapRatingToDto(Rating rating)
     {
         return new RatingDto

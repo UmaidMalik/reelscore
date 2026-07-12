@@ -22,7 +22,7 @@ public class MovieService : IMovieService
             ReleaseYear = movie.ReleaseYear
         };
     }
-    
+
     public Task<IEnumerable<Movie>> GetAllMovies()
     {
         return _movieRepository.GetAllMoviesAsync();

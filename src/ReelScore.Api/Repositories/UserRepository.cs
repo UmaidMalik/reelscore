@@ -11,7 +11,7 @@ public class UserRepository : IUserRepository
     {
         _context = context;
     }
-    
+
     public async Task<IEnumerable<User>> GetAllUsersAsync()
     {
         return await _context.Users
@@ -33,10 +33,10 @@ public class UserRepository : IUserRepository
     {
         // Adding the user to the context
         var entityToAdd = _context.Users.Add(user);
-        
+
         // asynchronously saving the changes to the database
         await _context.SaveChangesAsync();
-        
+
         // returning the added user
         return entityToAdd.Entity;
     }
