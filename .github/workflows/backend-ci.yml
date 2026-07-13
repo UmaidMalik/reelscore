@@ -81,6 +81,44 @@ jobs:
           --configuration Release
           --no-restore
 
+  test:
+    name: Automated tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: validate
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore "$SOLUTION_PATH"
+
+      - name: Run automated tests
+        run: >
+          dotnet test "$SOLUTION_PATH"
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=reelscore-tests.trx"
+          --results-directory TestResults
+          --collect:"XPlat Code Coverage"
+
+      - name: Upload test results and coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            TestResults/
+            tests/ReelScore.Api.Tests/TestResults/
+          if-no-files-found: warn
+          retention-days: 14
+
   security:
     name: Dependency security
     runs-on: ubuntu-latest
@@ -131,6 +169,7 @@ jobs:
     needs:
       - validate
       - security
+      - test
 
     steps:
       - name: Check out repository
@@ -143,6 +182,9 @@ jobs:
 
       - name: Restore API dependencies
         run: dotnet restore "$API_PROJECT_PATH"
+
+      - name: Restore .NET tools
+        run: dotnet tool restore
 
       - name: Publish API
         run: >
