@@ -83,6 +83,35 @@ public sealed class MovieRatingDbContext : DbContext
         movie.Property(entity => entity.ReleaseYear)
             .HasColumnName("release_year")
             .IsRequired();
+
+        movie.Property(entity => entity.TmdbId)
+            .HasColumnName("tmdb_id");
+
+        movie.Property(entity => entity.OriginalTitle)
+            .HasColumnName("original_title")
+            .HasMaxLength(255);
+
+        movie.Property(entity => entity.ReleaseDate)
+            .HasColumnName("release_date");
+
+        movie.Property(entity => entity.RuntimeMinutes)
+            .HasColumnName("runtime_minutes");
+
+        movie.Property(entity => entity.PosterPath)
+            .HasColumnName("poster_path")
+            .HasMaxLength(500);
+
+        movie.Property(entity => entity.BackdropPath)
+            .HasColumnName("backdrop_path")
+            .HasMaxLength(500);
+
+        movie.Property(entity => entity.Genres)
+            .HasColumnName("genres")
+            .HasColumnType("text[]")
+            .IsRequired();
+
+        movie.HasIndex(entity => entity.TmdbId)
+            .IsUnique();
     }
 
     private static void ConfigureRatings(ModelBuilder modelBuilder)

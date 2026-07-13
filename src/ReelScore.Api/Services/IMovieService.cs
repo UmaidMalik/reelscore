@@ -23,4 +23,9 @@ public interface IMovieService
     Task<bool> DeleteMovieAsync(
         long movieId,
         CancellationToken cancellationToken = default);
+
+    Task<ImportMovieResult> ImportMovieAsync(
+        int tmdbId,
+        string language = "en-US",
+        CancellationToken cancellationToken = default);
 }

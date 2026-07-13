@@ -10,4 +10,9 @@ public interface ITmdbClient
         string language,
         int? releaseYear,
         CancellationToken cancellationToken = default);
+
+    Task<ExternalMovieDetailsResponse?> GetMovieDetailsAsync(
+        int tmdbId,
+        string language = "en-US",
+        CancellationToken cancellationToken = default);
 }

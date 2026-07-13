@@ -1,45 +1,41 @@
 namespace ReelScore.Api.DataTransferObjects;
 
-public sealed class MovieResponse
+public sealed class ExternalMovieDetailsResponse
 {
-    public long MovieId
-    {
-        get; init;
-    }
-
-    public int? TmdbId
+    public int TmdbId
     {
         get; init;
     }
 
     public string Title { get; init; } = string.Empty;
 
-    public string? OriginalTitle
-    {
-        get; init;
-    }
+    public string OriginalTitle { get; init; } = string.Empty;
 
-    public string? Summary
-    {
-        get; init;
-    }
+    public string Overview { get; init; } = string.Empty;
 
     public DateOnly? ReleaseDate
     {
         get; init;
     }
 
-    public int ReleaseYear
-    {
-        get; init;
-    }
+    public int? ReleaseYear => ReleaseDate?.Year;
 
     public int? RuntimeMinutes
     {
         get; init;
     }
 
+    public string? PosterPath
+    {
+        get; init;
+    }
+
     public string? PosterUrl
+    {
+        get; init;
+    }
+
+    public string? BackdropPath
     {
         get; init;
     }
@@ -55,12 +51,14 @@ public sealed class MovieResponse
     } =
         Array.Empty<string>();
 
-    public double AverageRating
+    public string OriginalLanguage { get; init; } = string.Empty;
+
+    public double TmdbScore
     {
         get; init;
     }
 
-    public int RatingCount
+    public int TmdbVoteCount
     {
         get; init;
     }

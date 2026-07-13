@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Options;
 using ReelScore.Api.DataTransferObjects;
@@ -70,6 +71,42 @@ public sealed class TmdbClient : ITmdbClient
         };
     }
 
+    public async Task<ExternalMovieDetailsResponse?> GetMovieDetailsAsync(
+        int tmdbId,
+        string language = "en-US",
+        CancellationToken cancellationToken = default)
+    {
+        var requestUri =
+            $"movie/{tmdbId}?language={Uri.EscapeDataString(language)}";
+
+        _logger.LogInformation(
+            "Fetching TMDB movie details for movie {TmdbId}",
+            tmdbId);
+
+        using var response = await _httpClient.GetAsync(
+            requestUri,
+            cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var details =
+            await response.Content.ReadFromJsonAsync<TmdbMovieDetails>(
+                cancellationToken: cancellationToken);
+
+        if (details is null)
+        {
+            throw new InvalidOperationException(
+                "TMDB returned an empty or invalid movie-details response.");
+        }
+
+        return MapDetailsToResponse(details);
+    }
+
     private ExternalMovieSearchItemResponse MapToResponse(
         TmdbMovieSearchItem movie)
     {
@@ -89,6 +126,39 @@ public sealed class TmdbClient : ITmdbClient
             GenreIds = movie.GenreIds,
             OriginalLanguage = movie.OriginalLanguage,
             Popularity = movie.Popularity,
+            TmdbScore = Math.Round(movie.VoteAverage, 1),
+            TmdbVoteCount = movie.VoteCount
+        };
+    }
+
+    private ExternalMovieDetailsResponse MapDetailsToResponse(
+        TmdbMovieDetails movie)
+    {
+        var releaseDate = ParseReleaseDate(movie.ReleaseDate);
+
+        return new ExternalMovieDetailsResponse
+        {
+            TmdbId = movie.Id,
+            Title = movie.Title,
+            OriginalTitle = movie.OriginalTitle,
+            Overview = movie.Overview,
+            ReleaseDate = releaseDate,
+            RuntimeMinutes = movie.Runtime,
+            PosterPath = movie.PosterPath,
+            PosterUrl = BuildImageUrl(
+                PosterSize,
+                movie.PosterPath),
+            BackdropPath = movie.BackdropPath,
+            BackdropUrl = BuildImageUrl(
+                BackdropSize,
+                movie.BackdropPath),
+            Genres = movie.Genres
+                .Select(genre => genre.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name)
+                .ToArray(),
+            OriginalLanguage = movie.OriginalLanguage,
             TmdbScore = Math.Round(movie.VoteAverage, 1),
             TmdbVoteCount = movie.VoteCount
         };

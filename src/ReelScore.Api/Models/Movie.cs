@@ -13,14 +13,33 @@ public class Movie
         get; set;
     }
 
+    [Column("tmdb_id")]
+    public int? TmdbId
+    {
+        get; set;
+    }
+
     [Required]
     [StringLength(255)]
     [Column("title")]
     public string Title { get; set; } = string.Empty;
 
+    [StringLength(255)]
+    [Column("original_title")]
+    public string? OriginalTitle
+    {
+        get; set;
+    }
+
     [StringLength(5000)]
     [Column("summary")]
     public string? Summary
+    {
+        get; set;
+    }
+
+    [Column("release_date")]
+    public DateOnly? ReleaseDate
     {
         get; set;
     }
@@ -33,48 +52,32 @@ public class Movie
         get; set;
     }
 
-    public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
-
-    public Movie(long movieId, string title, string summary, int releaseYear)
+    [Column("runtime_minutes")]
+    public int? RuntimeMinutes
     {
-        MovieId = movieId;
-        Title = title;
-        Summary = summary;
-        ReleaseYear = releaseYear;
+        get; set;
     }
 
-    public Movie(string title, string summary, int releaseYear)
+    [StringLength(500)]
+    [Column("poster_path")]
+    public string? PosterPath
     {
-        Title = title;
-        Summary = summary;
-        ReleaseYear = releaseYear;
+        get; set;
     }
 
-    public Movie()
+    [StringLength(500)]
+    [Column("backdrop_path")]
+    public string? BackdropPath
     {
+        get; set;
     }
 
-    public override string ToString()
-    {
-        return $"MovieId: {MovieId}, Title: {Title}, Summary: {Summary}, ReleaseYear: {ReleaseYear}";
-    }
+    [Column("genres", TypeName = "text[]")]
+    public string[] Genres { get; set; } = Array.Empty<string>();
 
-    public override bool Equals(object? obj)
+    public ICollection<Rating> Ratings
     {
-        if (obj == null || GetType() != obj.GetType())
-        {
-            return false;
-        }
-
-        Movie movie = (Movie)obj;
-        return MovieId == movie.MovieId
-            && Title == movie.Title
-            && Summary == movie.Summary
-            && ReleaseYear == movie.ReleaseYear;
-    }
-
-    public override int GetHashCode()
-    {
-        return HashCode.Combine(MovieId, Title, Summary, ReleaseYear);
-    }
+        get; set;
+    } =
+        new List<Rating>();
 }

@@ -34,4 +34,12 @@ public interface IMovieRepository
     Task<bool> ExistsAsync(
         long movieId,
         CancellationToken cancellationToken = default);
+
+    Task<Movie?> GetByTmdbIdAsync(
+        int tmdbId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> TmdbMovieExistsAsync(
+        int tmdbId,
+        CancellationToken cancellationToken = default);
 }

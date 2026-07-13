@@ -131,4 +131,25 @@ public sealed class MovieRepository : IMovieRepository
             movie => movie.MovieId == movieId,
             cancellationToken);
     }
+
+    public async Task<Movie?> GetByTmdbIdAsync(
+        int tmdbId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Movies
+            .AsNoTracking()
+            .Include(movie => movie.Ratings)
+            .FirstOrDefaultAsync(
+                movie => movie.TmdbId == tmdbId,
+                cancellationToken);
+    }
+
+    public Task<bool> TmdbMovieExistsAsync(
+        int tmdbId,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Movies.AnyAsync(
+            movie => movie.TmdbId == tmdbId,
+            cancellationToken);
+    }
 }

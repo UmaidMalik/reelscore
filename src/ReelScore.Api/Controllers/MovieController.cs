@@ -113,4 +113,61 @@ public sealed class MovieController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("import/{tmdbId:int}")]
+    [ProducesResponseType(
+        typeof(MovieResponse),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(MovieResponse),
+        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<MovieResponse>> ImportMovie(
+        int tmdbId,
+        [FromQuery] string language = "en-US",
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _movieService.ImportMovieAsync(
+            tmdbId,
+            language,
+            cancellationToken);
+
+        if (result.Status == ImportMovieStatus.ExternalMovieNotFound)
+        {
+            return NotFound(new
+            {
+                message = $"TMDB movie with ID {tmdbId} was not found."
+            });
+        }
+
+        if (result.Status == ImportMovieStatus.InvalidMovieData)
+        {
+            return UnprocessableEntity(new
+            {
+                message =
+                    "The external movie does not contain the required title and release-year information."
+            });
+        }
+
+        if (result.Status == ImportMovieStatus.AlreadyImported)
+        {
+            return Conflict(new
+            {
+                message = "This TMDB movie already exists in the ReelScore library.",
+                movie = result.Movie
+            });
+        }
+
+        var movie = result.Movie!;
+
+        return CreatedAtAction(
+            nameof(GetMovie),
+            new
+            {
+                movieId = movie.MovieId
+            },
+            movie);
+    }
+
 }
