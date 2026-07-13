@@ -36,7 +36,7 @@ public sealed class ExternalMoviesController : ControllerBase
 
             return Ok(results);
         }
-        catch (HttpRequestException exception)
+        catch (HttpRequestException)
         {
             return Problem(
                 statusCode: StatusCodes.Status502BadGateway,
