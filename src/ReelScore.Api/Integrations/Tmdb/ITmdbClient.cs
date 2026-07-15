@@ -4,7 +4,7 @@ namespace ReelScore.Api.Integrations.Tmdb;
 
 public interface ITmdbClient
 {
-    Task<ExternalMovieSearchResponse> SearchMoviesAsync(
+    Task<ExternalMovieSearchResponse> SearchTitlesAsync(
         string query,
         int page,
         string language,

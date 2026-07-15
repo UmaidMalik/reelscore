@@ -57,7 +57,8 @@ public sealed class MovieService : IMovieService
         {
             Title = request.Title.Trim(),
             Summary = NormalizeOptionalText(request.Summary),
-            ReleaseYear = request.ReleaseYear
+            ReleaseYear = request.ReleaseYear,
+            MediaType = MediaType.Movie
         };
 
         var createdMovie = await _movieRepository.AddAsync(

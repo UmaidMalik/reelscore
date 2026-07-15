@@ -57,7 +57,7 @@ public sealed class MovieRepository : IMovieRepository
         if (releaseYear.HasValue)
         {
             query = query.Where(movie =>
-                movie.ReleaseYear == releaseYear.Value);
+                movie.ReleaseYear == releaseYear);
         }
 
         return await query

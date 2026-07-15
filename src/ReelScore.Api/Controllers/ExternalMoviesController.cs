@@ -27,7 +27,7 @@ public sealed class ExternalMoviesController : ControllerBase
     {
         try
         {
-            var results = await _tmdbClient.SearchMoviesAsync(
+            var results = await _tmdbClient.SearchTitlesAsync(
                 request.Query,
                 request.Page,
                 request.Language,

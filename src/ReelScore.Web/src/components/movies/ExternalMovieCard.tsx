@@ -13,7 +13,7 @@ export function ExternalMovieCard({
   movie,
 }: ExternalMovieCardProps) {
   return (
-    <Card className="group overflow-hidden border-border/70 bg-card/80 py-0 transition hover:-translate-y-1 hover:border-orange-500/50">
+    <Card className="group flex h-full flex-col overflow-hidden border-border/70 bg-card py-0 transition hover:-translate-y-1 hover:border-orange-500/50 hover:shadow-lg">
       <div className="relative overflow-hidden">
         <MoviePoster
           src={movie.posterUrl}
@@ -23,6 +23,13 @@ export function ExternalMovieCard({
         <Badge className="absolute top-3 right-3 bg-black/75 text-white">
           <Star className="size-3 fill-orange-400 text-orange-400" />
           {movie.tmdbScore.toFixed(1)}
+        </Badge>
+        
+        <Badge
+        variant="secondary"
+        className="absolute top-3 left-3 bg-black/75 text-white"
+        >
+        {movie.mediaType === "movie" ? "Movie" : "TV Series"}
         </Badge>
       </div>
 

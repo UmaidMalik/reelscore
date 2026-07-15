@@ -1,3 +1,5 @@
+export type MediaType = "movie" | "tv";
+
 export type ExternalMovieSearchItem = {
   tmdbId: number;
   title: string;
@@ -12,6 +14,7 @@ export type ExternalMovieSearchItem = {
   popularity: number;
   tmdbScore: number;
   tmdbVoteCount: number;
+  mediaType: MediaType;
 };
 
 export type ExternalMovieSearchResponse = {

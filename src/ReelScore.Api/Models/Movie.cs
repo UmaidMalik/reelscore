@@ -47,7 +47,7 @@ public class Movie
     [Required]
     [Range(1888, 2100)]
     [Column("release_year")]
-    public int ReleaseYear
+    public int? ReleaseYear
     {
         get; set;
     }
@@ -74,6 +74,22 @@ public class Movie
 
     [Column("genres", TypeName = "text[]")]
     public string[] Genres { get; set; } = Array.Empty<string>();
+
+    [Required]
+    [Column("media_type")]
+    public MediaType MediaType { get; set; } = MediaType.Movie;
+
+    [Column("number_of_seasons")]
+    public int? NumberOfSeasons
+    {
+        get; set;
+    }
+
+    [Column("number_of_episodes")]
+    public int? NumberOfEpisodes
+    {
+        get; set;
+    }
 
     public ICollection<Rating> Ratings
     {

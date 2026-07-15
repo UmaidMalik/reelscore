@@ -1,4 +1,5 @@
 namespace ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.Models;
 
 public sealed class MovieResponse
 {
@@ -29,7 +30,7 @@ public sealed class MovieResponse
         get; init;
     }
 
-    public int ReleaseYear
+    public int? ReleaseYear
     {
         get; init;
     }
@@ -49,11 +50,7 @@ public sealed class MovieResponse
         get; init;
     }
 
-    public IReadOnlyCollection<string> Genres
-    {
-        get; init;
-    } =
-        Array.Empty<string>();
+    public IReadOnlyCollection<string> Genres { get; init; } = Array.Empty<string>();
 
     public double AverageRating
     {
@@ -61,6 +58,21 @@ public sealed class MovieResponse
     }
 
     public int RatingCount
+    {
+        get; init;
+    }
+
+    public MediaType MediaType
+    {
+        get; init;
+    }
+
+    public int? NumberOfSeasons
+    {
+        get; init;
+    }
+
+    public int? NumberOfEpisodes
     {
         get; init;
     }

@@ -25,49 +25,88 @@ public sealed class TmdbClient : ITmdbClient
         _logger = logger;
     }
 
-    public async Task<ExternalMovieSearchResponse> SearchMoviesAsync(
+    public async Task<ExternalMovieSearchResponse> SearchTitlesAsync(
         string query,
         int page,
         string language,
         int? releaseYear,
         CancellationToken cancellationToken = default)
     {
-        var requestUri = BuildSearchUri(
+        var movieRequestUri = BuildMovieSearchUri(
+            query,
+            page,
+            language,
+            releaseYear);
+
+        var tvRequestUri = BuildTvSearchUri(
             query,
             page,
             language,
             releaseYear);
 
         _logger.LogInformation(
-            "Searching TMDB for query {MovieQuery} on page {Page}",
+            "Searching TMDB movies and TV series for query {SearchQuery} on page {Page}",
             query,
             page);
 
-        using var response = await _httpClient.GetAsync(
-            requestUri,
+        var movieResponseTask = _httpClient.GetAsync(
+            movieRequestUri,
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        var tvResponseTask = _httpClient.GetAsync(
+            tvRequestUri,
+            cancellationToken);
 
-        var tmdbResponse =
-            await response.Content.ReadFromJsonAsync<TmdbMovieSearchResponse>(
-                cancellationToken: cancellationToken);
+        await Task.WhenAll(
+            movieResponseTask,
+            tvResponseTask);
 
-        if (tmdbResponse is null)
+        using var movieHttpResponse = await movieResponseTask;
+        using var tvHttpResponse = await tvResponseTask;
+
+        movieHttpResponse.EnsureSuccessStatusCode();
+        tvHttpResponse.EnsureSuccessStatusCode();
+
+        var movieResponse =
+            await movieHttpResponse.Content
+                .ReadFromJsonAsync<TmdbMovieSearchResponse>(
+                    cancellationToken: cancellationToken);
+
+        var tvResponse =
+            await tvHttpResponse.Content
+                .ReadFromJsonAsync<TmdbTvSearchResponse>(
+                    cancellationToken: cancellationToken);
+
+        if (movieResponse is null || tvResponse is null)
         {
             throw new InvalidOperationException(
-                "TMDB returned an empty or invalid response.");
+                "TMDB returned an empty or invalid search response.");
         }
+
+        var movieResults = movieResponse.Results
+            .Where(movie => !movie.Adult)
+            .Select(MapMovieSearchResult);
+
+        var tvResults = tvResponse.Results
+            .Where(show => !show.Adult)
+            .Select(MapTvSearchResult);
+
+        var combinedResults = movieResults
+            .Concat(tvResults)
+            .OrderByDescending(result => result.Popularity)
+            .ThenBy(result => result.Title)
+            .ToArray();
 
         return new ExternalMovieSearchResponse
         {
-            Page = tmdbResponse.Page,
-            TotalPages = tmdbResponse.TotalPages,
-            TotalResults = tmdbResponse.TotalResults,
-            Results = tmdbResponse.Results
-                .Where(movie => !movie.Adult)
-                .Select(MapToResponse)
-                .ToList()
+            Page = page,
+            TotalPages = Math.Max(
+                movieResponse.TotalPages,
+                tvResponse.TotalPages),
+            TotalResults =
+                movieResponse.TotalResults +
+                tvResponse.TotalResults,
+            Results = combinedResults
         };
     }
 
@@ -107,12 +146,13 @@ public sealed class TmdbClient : ITmdbClient
         return MapDetailsToResponse(details);
     }
 
-    private ExternalMovieSearchItemResponse MapToResponse(
+    private ExternalMovieSearchItemResponse MapMovieSearchResult(
         TmdbMovieSearchItem movie)
     {
         return new ExternalMovieSearchItemResponse
         {
             TmdbId = movie.Id,
+            MediaType = "movie",
             Title = movie.Title,
             OriginalTitle = movie.OriginalTitle,
             Overview = movie.Overview,
@@ -128,6 +168,31 @@ public sealed class TmdbClient : ITmdbClient
             Popularity = movie.Popularity,
             TmdbScore = Math.Round(movie.VoteAverage, 1),
             TmdbVoteCount = movie.VoteCount
+        };
+    }
+
+    private ExternalMovieSearchItemResponse MapTvSearchResult(
+        TmdbTvSearchItem show)
+    {
+        return new ExternalMovieSearchItemResponse
+        {
+            TmdbId = show.Id,
+            MediaType = "tv",
+            Title = show.Name,
+            OriginalTitle = show.OriginalName,
+            Overview = show.Overview,
+            ReleaseDate = ParseReleaseDate(show.FirstAirDate),
+            PosterUrl = BuildImageUrl(
+                PosterSize,
+                show.PosterPath),
+            BackdropUrl = BuildImageUrl(
+                BackdropSize,
+                show.BackdropPath),
+            GenreIds = show.GenreIds,
+            OriginalLanguage = show.OriginalLanguage,
+            Popularity = show.Popularity,
+            TmdbScore = Math.Round(show.VoteAverage, 1),
+            TmdbVoteCount = show.VoteCount
         };
     }
 
@@ -164,19 +229,16 @@ public sealed class TmdbClient : ITmdbClient
         };
     }
 
-    private string BuildSearchUri(
+    private static string BuildMovieSearchUri(
         string query,
         int page,
         string language,
         int? releaseYear)
     {
-        var queryParameters = new List<string>
-        {
-            $"query={Uri.EscapeDataString(query.Trim())}",
-            $"page={page}",
-            $"language={Uri.EscapeDataString(language)}",
-            "include_adult=false"
-        };
+        var queryParameters = BuildCommonSearchParameters(
+            query,
+            page,
+            language);
 
         if (releaseYear.HasValue)
         {
@@ -185,6 +247,40 @@ public sealed class TmdbClient : ITmdbClient
         }
 
         return $"search/movie?{string.Join("&", queryParameters)}";
+    }
+
+    private static string BuildTvSearchUri(
+        string query,
+        int page,
+        string language,
+        int? releaseYear)
+    {
+        var queryParameters = BuildCommonSearchParameters(
+            query,
+            page,
+            language);
+
+        if (releaseYear.HasValue)
+        {
+            queryParameters.Add(
+                $"first_air_date_year={releaseYear.Value}");
+        }
+
+        return $"search/tv?{string.Join("&", queryParameters)}";
+    }
+
+    private static List<string> BuildCommonSearchParameters(
+        string query,
+        int page,
+        string language)
+    {
+        return new List<string>
+        {
+            $"query={Uri.EscapeDataString(query.Trim())}",
+            $"page={page}",
+            $"language={Uri.EscapeDataString(language)}",
+            "include_adult=false"
+        };
     }
 
     private string? BuildImageUrl(

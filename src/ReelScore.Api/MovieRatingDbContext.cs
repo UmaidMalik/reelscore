@@ -81,8 +81,7 @@ public sealed class MovieRatingDbContext : DbContext
             .HasMaxLength(5000);
 
         movie.Property(entity => entity.ReleaseYear)
-            .HasColumnName("release_year")
-            .IsRequired();
+            .HasColumnName("release_year");
 
         movie.Property(entity => entity.TmdbId)
             .HasColumnName("tmdb_id");
@@ -110,8 +109,24 @@ public sealed class MovieRatingDbContext : DbContext
             .HasColumnType("text[]")
             .IsRequired();
 
-        movie.HasIndex(entity => entity.TmdbId)
+        movie.HasIndex(entity => new
+        {
+            entity.TmdbId,
+            entity.MediaType
+        })
             .IsUnique();
+
+        movie.Property(entity => entity.MediaType)
+            .HasColumnName("media_type")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        movie.Property(entity => entity.NumberOfSeasons)
+            .HasColumnName("number_of_seasons");
+
+        movie.Property(entity => entity.NumberOfEpisodes)
+            .HasColumnName("number_of_episodes");
     }
 
     private static void ConfigureRatings(ModelBuilder modelBuilder)
