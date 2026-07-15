@@ -132,24 +132,30 @@ public sealed class MovieRepository : IMovieRepository
             cancellationToken);
     }
 
-    public async Task<Movie?> GetByTmdbIdAsync(
+    public async Task<Movie?> GetByTmdbIdentityAsync(
         int tmdbId,
+        MediaType mediaType,
         CancellationToken cancellationToken = default)
     {
         return await _context.Movies
             .AsNoTracking()
             .Include(movie => movie.Ratings)
             .FirstOrDefaultAsync(
-                movie => movie.TmdbId == tmdbId,
+                movie =>
+                    movie.TmdbId == tmdbId &&
+                    movie.MediaType == mediaType,
                 cancellationToken);
     }
 
-    public Task<bool> TmdbMovieExistsAsync(
+    public Task<bool> TmdbTitleExistsAsync(
         int tmdbId,
+        MediaType mediaType,
         CancellationToken cancellationToken = default)
     {
         return _context.Movies.AnyAsync(
-            movie => movie.TmdbId == tmdbId,
+            movie =>
+                movie.TmdbId == tmdbId &&
+                movie.MediaType == mediaType,
             cancellationToken);
     }
 }

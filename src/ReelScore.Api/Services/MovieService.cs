@@ -106,12 +106,15 @@ public sealed class MovieService : IMovieService
         {
             MovieId = movie.MovieId,
             TmdbId = movie.TmdbId,
+            MediaType = movie.MediaType,
             Title = movie.Title,
             OriginalTitle = movie.OriginalTitle,
             Summary = movie.Summary,
             ReleaseDate = movie.ReleaseDate,
             ReleaseYear = movie.ReleaseYear,
             RuntimeMinutes = movie.RuntimeMinutes,
+            NumberOfSeasons = movie.NumberOfSeasons,
+            NumberOfEpisodes = movie.NumberOfEpisodes,
             PosterUrl = BuildImageUrl(
                 PosterSize,
                 movie.PosterPath),
@@ -131,71 +134,95 @@ public sealed class MovieService : IMovieService
             : value.Trim();
     }
 
-    public async Task<ImportMovieResult> ImportMovieAsync(
+    public async Task<ImportMovieResult> ImportTitleAsync(
         int tmdbId,
+        MediaType mediaType,
         string language = "en-US",
         CancellationToken cancellationToken = default)
     {
         var alreadyImported =
-            await _movieRepository.TmdbMovieExistsAsync(
+            await _movieRepository.TmdbTitleExistsAsync(
                 tmdbId,
+                mediaType,
                 cancellationToken);
 
         if (alreadyImported)
         {
-            var existingMovie =
-                await _movieRepository.GetByTmdbIdAsync(
+            var existingTitle =
+                await _movieRepository.GetByTmdbIdentityAsync(
                     tmdbId,
+                    mediaType,
                     cancellationToken);
 
             return new ImportMovieResult(
                 ImportMovieStatus.AlreadyImported,
-                existingMovie is null
+                existingTitle is null
                     ? null
-                    : MapToResponse(existingMovie));
+                    : MapToResponse(existingTitle));
         }
 
-        var externalMovie = await _tmdbClient.GetMovieDetailsAsync(
-            tmdbId,
-            language,
-            cancellationToken);
+        var externalTitle = mediaType switch
+        {
+            MediaType.Movie =>
+                await _tmdbClient.GetMovieDetailsAsync(
+                    tmdbId,
+                    language,
+                    cancellationToken),
 
-        if (externalMovie is null)
+            MediaType.TvSeries =>
+                await _tmdbClient.GetTvDetailsAsync(
+                    tmdbId,
+                    language,
+                    cancellationToken),
+
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(mediaType),
+                mediaType,
+                "Unsupported media type.")
+        };
+
+        if (externalTitle is null)
         {
             return new ImportMovieResult(
                 ImportMovieStatus.ExternalMovieNotFound);
         }
 
-        if (externalMovie.ReleaseYear is null
-            || string.IsNullOrWhiteSpace(externalMovie.Title))
+        if (string.IsNullOrWhiteSpace(externalTitle.Title))
         {
             return new ImportMovieResult(
                 ImportMovieStatus.InvalidMovieData);
         }
 
-        var movie = new Movie
+        var title = new Movie
         {
-            TmdbId = externalMovie.TmdbId,
-            Title = externalMovie.Title.Trim(),
+            TmdbId = externalTitle.TmdbId,
+            MediaType = mediaType,
+            Title = externalTitle.Title.Trim(),
             OriginalTitle = NormalizeOptionalText(
-                externalMovie.OriginalTitle),
+                externalTitle.OriginalTitle),
             Summary = NormalizeOptionalText(
-                externalMovie.Overview),
-            ReleaseDate = externalMovie.ReleaseDate,
-            ReleaseYear = externalMovie.ReleaseYear.Value,
-            RuntimeMinutes = externalMovie.RuntimeMinutes,
-            PosterPath = externalMovie.PosterPath,
-            BackdropPath = externalMovie.BackdropPath,
-            Genres = externalMovie.Genres.ToArray()
+                externalTitle.Overview),
+            ReleaseDate = externalTitle.ReleaseDate,
+            ReleaseYear = externalTitle.ReleaseYear,
+            RuntimeMinutes = externalTitle.RuntimeMinutes,
+            NumberOfSeasons = mediaType == MediaType.TvSeries
+                ? externalTitle.NumberOfSeasons
+                : null,
+            NumberOfEpisodes = mediaType == MediaType.TvSeries
+                ? externalTitle.NumberOfEpisodes
+                : null,
+            PosterPath = externalTitle.PosterPath,
+            BackdropPath = externalTitle.BackdropPath,
+            Genres = externalTitle.Genres.ToArray()
         };
 
-        var importedMovie = await _movieRepository.AddAsync(
-            movie,
+        var importedTitle = await _movieRepository.AddAsync(
+            title,
             cancellationToken);
 
         return new ImportMovieResult(
             ImportMovieStatus.Imported,
-            MapToResponse(importedMovie));
+            MapToResponse(importedTitle));
     }
 
     private string? BuildImageUrl(

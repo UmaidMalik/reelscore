@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.Models;
 using ReelScore.Api.Services;
 
 namespace ReelScore.Api.Controllers;
@@ -114,60 +115,103 @@ public sealed class MovieController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("import/{tmdbId:int}")]
+    [HttpPost("import/{mediaType}/{tmdbId:int}")]
     [ProducesResponseType(
         typeof(MovieResponse),
         StatusCodes.Status201Created)]
-    [ProducesResponseType(
-        typeof(MovieResponse),
-        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    public async Task<ActionResult<MovieResponse>> ImportMovie(
+    public async Task<ActionResult<MovieResponse>> ImportTitle(
+        string mediaType,
         int tmdbId,
         [FromQuery] string language = "en-US",
         CancellationToken cancellationToken = default)
     {
-        var result = await _movieService.ImportMovieAsync(
-            tmdbId,
-            language,
-            cancellationToken);
-
-        if (result.Status == ImportMovieStatus.ExternalMovieNotFound)
+        if (!TryParseMediaType(
+                mediaType,
+                out var parsedMediaType))
         {
-            return NotFound(new
+            return BadRequest(new
             {
-                message = $"TMDB movie with ID {tmdbId} was not found."
+                message =
+                    "Media type must be either 'movie' or 'tv'."
             });
         }
 
-        if (result.Status == ImportMovieStatus.InvalidMovieData)
+        var result = await _movieService.ImportTitleAsync(
+            tmdbId,
+            parsedMediaType,
+            language,
+            cancellationToken);
+
+        if (result.Status ==
+            ImportMovieStatus.ExternalMovieNotFound)
+        {
+            return NotFound(new
+            {
+                message =
+                    $"TMDB {mediaType} with ID {tmdbId} was not found."
+            });
+        }
+
+        if (result.Status ==
+            ImportMovieStatus.InvalidMovieData)
         {
             return UnprocessableEntity(new
             {
                 message =
-                    "The external movie does not contain the required title and release-year information."
+                    "The external title does not contain the required information."
             });
         }
 
-        if (result.Status == ImportMovieStatus.AlreadyImported)
+        if (result.Status ==
+            ImportMovieStatus.AlreadyImported)
         {
             return Conflict(new
             {
-                message = "This TMDB movie already exists in the ReelScore library.",
-                movie = result.Movie
+                message =
+                    "This title already exists in the ReelScore library.",
+                title = result.Movie
             });
         }
 
-        var movie = result.Movie!;
+        var importedTitle = result.Movie!;
 
         return CreatedAtAction(
             nameof(GetMovie),
             new
             {
-                movieId = movie.MovieId
+                movieId = importedTitle.MovieId
             },
-            movie);
+            importedTitle);
+    }
+
+    private static bool TryParseMediaType(
+        string value,
+        out MediaType mediaType)
+    {
+        if (string.Equals(
+                value,
+                "movie",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            mediaType = MediaType.Movie;
+            return true;
+        }
+
+        if (string.Equals(
+                value,
+                "tv",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            mediaType = MediaType.TvSeries;
+            return true;
+        }
+
+        mediaType = default;
+        return false;
     }
 
 }

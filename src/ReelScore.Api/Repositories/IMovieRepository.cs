@@ -35,11 +35,13 @@ public interface IMovieRepository
         long movieId,
         CancellationToken cancellationToken = default);
 
-    Task<Movie?> GetByTmdbIdAsync(
+    Task<Movie?> GetByTmdbIdentityAsync(
         int tmdbId,
+        MediaType mediaType,
         CancellationToken cancellationToken = default);
 
-    Task<bool> TmdbMovieExistsAsync(
+    Task<bool> TmdbTitleExistsAsync(
         int tmdbId,
+        MediaType mediaType,
         CancellationToken cancellationToken = default);
 }

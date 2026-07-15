@@ -146,6 +146,42 @@ public sealed class TmdbClient : ITmdbClient
         return MapDetailsToResponse(details);
     }
 
+    public async Task<ExternalMovieDetailsResponse?> GetTvDetailsAsync(
+        int tmdbId,
+        string language = "en-US",
+        CancellationToken cancellationToken = default)
+    {
+        var requestUri =
+            $"tv/{tmdbId}?language={Uri.EscapeDataString(language)}";
+
+        _logger.LogInformation(
+            "Fetching TMDB TV details for series {TmdbId}",
+            tmdbId);
+
+        using var response = await _httpClient.GetAsync(
+            requestUri,
+            cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var details =
+            await response.Content.ReadFromJsonAsync<TmdbTvDetails>(
+                cancellationToken: cancellationToken);
+
+        if (details is null)
+        {
+            throw new InvalidOperationException(
+                "TMDB returned an empty or invalid TV-details response.");
+        }
+
+        return MapTvDetailsToResponse(details);
+    }
+
     private ExternalMovieSearchItemResponse MapMovieSearchResult(
         TmdbMovieSearchItem movie)
     {
@@ -204,6 +240,7 @@ public sealed class TmdbClient : ITmdbClient
         return new ExternalMovieDetailsResponse
         {
             TmdbId = movie.Id,
+            MediaType = "movie",
             Title = movie.Title,
             OriginalTitle = movie.OriginalTitle,
             Overview = movie.Overview,
@@ -226,6 +263,50 @@ public sealed class TmdbClient : ITmdbClient
             OriginalLanguage = movie.OriginalLanguage,
             TmdbScore = Math.Round(movie.VoteAverage, 1),
             TmdbVoteCount = movie.VoteCount
+        };
+    }
+
+    private ExternalMovieDetailsResponse MapTvDetailsToResponse(
+        TmdbTvDetails show)
+    {
+        var firstAirDate = ParseReleaseDate(show.FirstAirDate);
+
+        var runtimeMinutes = show.EpisodeRunTime
+            .Where(runtime => runtime > 0)
+            .Cast<int?>()
+            .FirstOrDefault();
+
+        return new ExternalMovieDetailsResponse
+        {
+            TmdbId = show.Id,
+            MediaType = "tv",
+            Title = show.Name,
+            OriginalTitle = show.OriginalName,
+            Overview = show.Overview,
+            ReleaseDate = firstAirDate,
+            RuntimeMinutes = runtimeMinutes,
+            NumberOfSeasons = show.NumberOfSeasons,
+            NumberOfEpisodes = show.NumberOfEpisodes,
+            PosterPath = show.PosterPath,
+            PosterUrl = BuildImageUrl(
+                PosterSize,
+                show.PosterPath),
+            BackdropPath = show.BackdropPath,
+            BackdropUrl = BuildImageUrl(
+                BackdropSize,
+                show.BackdropPath),
+            Genres = show.Genres
+                .Select(genre => genre.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name)
+                .ToArray(),
+            OriginalLanguage = show.OriginalLanguage,
+            TmdbScore = Math.Round(show.VoteAverage, 1),
+            TmdbVoteCount = show.VoteCount,
+            Status = string.IsNullOrWhiteSpace(show.Status)
+                ? null
+                : show.Status
         };
     }
 

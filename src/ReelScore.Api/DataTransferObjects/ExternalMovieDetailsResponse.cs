@@ -7,6 +7,8 @@ public sealed class ExternalMovieDetailsResponse
         get; init;
     }
 
+    public string MediaType { get; init; } = string.Empty;
+
     public string Title { get; init; } = string.Empty;
 
     public string OriginalTitle { get; init; } = string.Empty;
@@ -21,6 +23,16 @@ public sealed class ExternalMovieDetailsResponse
     public int? ReleaseYear => ReleaseDate?.Year;
 
     public int? RuntimeMinutes
+    {
+        get; init;
+    }
+
+    public int? NumberOfSeasons
+    {
+        get; init;
+    }
+
+    public int? NumberOfEpisodes
     {
         get; init;
     }
@@ -59,6 +71,11 @@ public sealed class ExternalMovieDetailsResponse
     }
 
     public int TmdbVoteCount
+    {
+        get; init;
+    }
+
+    public string? Status
     {
         get; init;
     }
