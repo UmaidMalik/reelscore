@@ -116,14 +116,15 @@ public sealed class MovieServiceTests
     }
 
     [Fact]
-    public async Task ImportMovieAsync_WhenValid_ImportsMovie()
+    public async Task ImportTitleAsync_WhenValid_ImportsMovie()
     {
         const int tmdbId = 348;
 
         _movieRepository
             .Setup(repository =>
-                repository.TmdbMovieExistsAsync(
+                repository.TmdbTitleExistsAsync(
                     tmdbId,
+                    MediaType.Movie,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -166,7 +167,9 @@ public sealed class MovieServiceTests
 
         var service = CreateService();
 
-        var result = await service.ImportMovieAsync(tmdbId);
+        var result = await service.ImportTitleAsync(
+            tmdbId,
+            MediaType.Movie);
 
         Assert.Equal(ImportMovieStatus.Imported, result.Status);
         Assert.NotNull(result.Movie);
@@ -181,7 +184,7 @@ public sealed class MovieServiceTests
     }
 
     [Fact]
-    public async Task ImportMovieAsync_WhenAlreadyImported_ReturnsAlreadyImported()
+    public async Task ImportTitleAsync_WhenAlreadyImported_ReturnsAlreadyImported()
     {
         const int tmdbId = 348;
 
@@ -199,21 +202,25 @@ public sealed class MovieServiceTests
 
         _movieRepository
             .Setup(repository =>
-                repository.TmdbMovieExistsAsync(
+                repository.TmdbTitleExistsAsync(
                     tmdbId,
+                    MediaType.Movie,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
         _movieRepository
             .Setup(repository =>
-                repository.GetByTmdbIdAsync(
+                repository.GetByTmdbIdentityAsync(
                     tmdbId,
+                    MediaType.Movie,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingMovie);
 
         var service = CreateService();
 
-        var result = await service.ImportMovieAsync(tmdbId);
+        var result = await service.ImportTitleAsync(
+            tmdbId,
+            MediaType.Movie);
 
         Assert.Equal(
             ImportMovieStatus.AlreadyImported,
@@ -238,14 +245,15 @@ public sealed class MovieServiceTests
     }
 
     [Fact]
-    public async Task ImportMovieAsync_WhenTmdbMovieDoesNotExist_ReturnsNotFound()
+    public async Task ImportTitleAsync_WhenTmdbMovieDoesNotExist_ReturnsNotFound()
     {
         const int tmdbId = 999999;
 
         _movieRepository
             .Setup(repository =>
-                repository.TmdbMovieExistsAsync(
+                repository.TmdbTitleExistsAsync(
                     tmdbId,
+                    MediaType.Movie,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -259,7 +267,9 @@ public sealed class MovieServiceTests
 
         var service = CreateService();
 
-        var result = await service.ImportMovieAsync(tmdbId);
+        var result = await service.ImportTitleAsync(
+            tmdbId,
+            MediaType.Movie);
 
         Assert.Equal(
             ImportMovieStatus.ExternalMovieNotFound,
@@ -275,14 +285,17 @@ public sealed class MovieServiceTests
     }
 
     [Fact]
-    public async Task ImportMovieAsync_WhenReleaseYearMissing_ReturnsInvalidMovieData()
+    public async Task ImportTitleAsync_WhenReleaseYearMissing_StillImportsTitle()
     {
         const int tmdbId = 123;
 
+        Movie? capturedTitle = null;
+
         _movieRepository
             .Setup(repository =>
-                repository.TmdbMovieExistsAsync(
+                repository.TmdbTitleExistsAsync(
                     tmdbId,
+                    MediaType.Movie,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -296,6 +309,7 @@ public sealed class MovieServiceTests
                 new ExternalMovieDetailsResponse
                 {
                     TmdbId = tmdbId,
+                    MediaType = "movie",
                     Title = "Unknown Release",
                     OriginalTitle = "Unknown Release",
                     Overview = "No release date is available.",
@@ -303,25 +317,41 @@ public sealed class MovieServiceTests
                     Genres = Array.Empty<string>()
                 });
 
+        _movieRepository
+            .Setup(repository =>
+                repository.AddAsync(
+                    It.IsAny<Movie>(),
+                    It.IsAny<CancellationToken>()))
+            .Callback<Movie, CancellationToken>(
+                (title, _) =>
+                {
+                    capturedTitle = title;
+                    title.MovieId = 1234;
+                })
+            .ReturnsAsync(
+                (Movie title, CancellationToken _) => title);
+
         var service = CreateService();
 
-        var result = await service.ImportMovieAsync(tmdbId);
+        var result = await service.ImportTitleAsync(
+            tmdbId,
+            MediaType.Movie);
 
         Assert.Equal(
-            ImportMovieStatus.InvalidMovieData,
+            ImportMovieStatus.Imported,
             result.Status);
 
-        Assert.Null(result.Movie);
+        Assert.NotNull(capturedTitle);
+        Assert.Null(capturedTitle.ReleaseDate);
+        Assert.Null(capturedTitle.ReleaseYear);
 
-        _movieRepository.Verify(
-            repository => repository.AddAsync(
-                It.IsAny<Movie>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
+        Assert.NotNull(result.Movie);
+        Assert.Equal(1234, result.Movie.MovieId);
+        Assert.Null(result.Movie.ReleaseYear);
     }
 
     [Fact]
-    public async Task ImportMovieAsync_MapsExternalMetadataToMovieEntity()
+    public async Task ImportTitleAsync_MapsExternalMetadataToMovieEntity()
     {
         const int tmdbId = 603;
 
@@ -329,8 +359,9 @@ public sealed class MovieServiceTests
 
         _movieRepository
             .Setup(repository =>
-                repository.TmdbMovieExistsAsync(
+                repository.TmdbTitleExistsAsync(
                     tmdbId,
+                    MediaType.Movie,
                     It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
@@ -377,12 +408,17 @@ public sealed class MovieServiceTests
 
         var service = CreateService();
 
-        var result = await service.ImportMovieAsync(
+        var result = await service.ImportTitleAsync(
             tmdbId,
+            MediaType.Movie,
             "fr-CA");
 
         Assert.Equal(ImportMovieStatus.Imported, result.Status);
         Assert.NotNull(capturedMovie);
+
+        Assert.Equal(
+            MediaType.Movie,
+            capturedMovie.MediaType);
 
         Assert.Equal(tmdbId, capturedMovie.TmdbId);
         Assert.Equal("The Matrix", capturedMovie.Title);
@@ -418,6 +454,100 @@ public sealed class MovieServiceTests
         Assert.Equal(
             "https://image.tmdb.org/t/p/w1280/matrix-backdrop.jpg",
             result.Movie.BackdropUrl);
+    }
+
+    [Fact]
+    public async Task ImportTitleAsync_WhenTvSeries_ImportsTvMetadata()
+    {
+        const int tmdbId = 1396;
+
+        Movie? capturedTitle = null;
+
+        _movieRepository
+            .Setup(repository =>
+                repository.TmdbTitleExistsAsync(
+                    tmdbId,
+                    MediaType.TvSeries,
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        _tmdbClient
+            .Setup(client =>
+                client.GetTvDetailsAsync(
+                    tmdbId,
+                    "en-US",
+                    It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+                new ExternalMovieDetailsResponse
+                {
+                    TmdbId = tmdbId,
+                    MediaType = "tv",
+                    Title = "Breaking Bad",
+                    OriginalTitle = "Breaking Bad",
+                    Overview =
+                        "A chemistry teacher enters the drug trade.",
+                    ReleaseDate =
+                        new DateOnly(2008, 1, 20),
+                    RuntimeMinutes = 47,
+                    NumberOfSeasons = 5,
+                    NumberOfEpisodes = 62,
+                    PosterPath = "/poster.jpg",
+                    BackdropPath = "/backdrop.jpg",
+                    Genres = new[]
+                    {
+                        "Crime",
+                        "Drama"
+                    },
+                    OriginalLanguage = "en",
+                    TmdbScore = 8.9,
+                    TmdbVoteCount = 14000,
+                    Status = "Ended"
+                });
+
+        _movieRepository
+            .Setup(repository =>
+                repository.AddAsync(
+                    It.IsAny<Movie>(),
+                    It.IsAny<CancellationToken>()))
+            .Callback<Movie, CancellationToken>(
+                (title, _) =>
+                {
+                    capturedTitle = title;
+                    title.MovieId = 90;
+                })
+            .ReturnsAsync(
+                (Movie title, CancellationToken _) => title);
+
+        var service = CreateService();
+
+        var result = await service.ImportTitleAsync(
+            tmdbId,
+            MediaType.TvSeries);
+
+        Assert.Equal(
+            ImportMovieStatus.Imported,
+            result.Status);
+
+        Assert.NotNull(capturedTitle);
+        Assert.Equal(
+            MediaType.TvSeries,
+            capturedTitle.MediaType);
+
+        Assert.Equal(
+            "Breaking Bad",
+            capturedTitle.Title);
+
+        Assert.Equal(2008, capturedTitle.ReleaseYear);
+        Assert.Equal(47, capturedTitle.RuntimeMinutes);
+        Assert.Equal(5, capturedTitle.NumberOfSeasons);
+        Assert.Equal(62, capturedTitle.NumberOfEpisodes);
+
+        _tmdbClient.Verify(
+            client => client.GetMovieDetailsAsync(
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private MovieService CreateService()
