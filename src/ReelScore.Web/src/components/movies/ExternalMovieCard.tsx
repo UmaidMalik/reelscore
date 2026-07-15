@@ -1,9 +1,9 @@
 import { CalendarDays, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { MoviePoster } from "@/components/movies/MoviePoster";
 import type { ExternalMovieSearchItem } from "@/types/movies";
+import { Link } from "react-router";
 
 type ExternalMovieCardProps = {
   movie: ExternalMovieSearchItem;
@@ -24,7 +24,7 @@ export function ExternalMovieCard({
           <Star className="size-3 fill-orange-400 text-orange-400" />
           {movie.tmdbScore.toFixed(1)}
         </Badge>
-        
+
         <Badge
         variant="secondary"
         className="absolute top-3 left-3 bg-black/75 text-white"
@@ -57,12 +57,12 @@ export function ExternalMovieCard({
       </CardContent>
 
       <CardFooter className="mt-auto p-4 pt-0">
-        <Button
-          className="w-full bg-orange-500 text-white hover:bg-orange-600"
-          disabled
+        <Link
+        to={`/external/${movie.mediaType}/${movie.tmdbId}`}
+        className="inline-flex h-9 w-full items-center justify-center rounded-md bg-orange-500 px-4 text-sm font-medium text-white transition-colors hover:bg-orange-600"
         >
-          View details
-        </Button>
+        View details
+        </Link>
       </CardFooter>
     </Card>
   );

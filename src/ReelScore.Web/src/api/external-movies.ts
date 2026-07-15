@@ -1,5 +1,10 @@
 import { apiRequest } from "@/api/client";
-import type { ExternalMovieSearchResponse } from "@/types/movies";
+import type {
+  ExternalMovieSearchResponse,
+  ExternalTitleDetails,
+  LocalTitle,
+  MediaType,
+} from "@/types/movies";
 
 type SearchExternalMoviesParameters = {
   query: string;
@@ -26,5 +31,28 @@ export async function searchExternalMovies({
 
   return apiRequest<ExternalMovieSearchResponse>(
     `/api/external/movies/search?${searchParameters.toString()}`,
+  );
+}
+
+export function getExternalTitleDetails(
+  mediaType: MediaType,
+  tmdbId: number,
+  language = "en-US",
+): Promise<ExternalTitleDetails> {
+  return apiRequest<ExternalTitleDetails>(
+    `/api/external/movies/${mediaType}/${tmdbId}?language=${encodeURIComponent(language)}`,
+  );
+}
+
+export function importExternalTitle(
+  mediaType: MediaType,
+  tmdbId: number,
+  language = "en-US",
+): Promise<LocalTitle> {
+  return apiRequest<LocalTitle>(
+    `/api/movies/import/${mediaType}/${tmdbId}?language=${encodeURIComponent(language)}`,
+    {
+      method: "POST",
+    },
   );
 }
