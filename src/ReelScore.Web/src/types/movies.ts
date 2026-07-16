@@ -49,7 +49,7 @@ export type ExternalTitleDetails = {
 export type LocalTitle = {
   movieId: number;
   tmdbId: number | null;
-  mediaType: "Movie" | "TvSeries";
+  mediaType: MediaType;
   title: string;
   originalTitle: string | null;
   summary: string | null;

@@ -106,7 +106,15 @@ public sealed class MovieService : IMovieService
         {
             MovieId = movie.MovieId,
             TmdbId = movie.TmdbId,
-            MediaType = movie.MediaType,
+            MediaType = movie.MediaType switch
+            {
+                MediaType.Movie => "movie",
+                MediaType.TvSeries => "tv",
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(movie.MediaType),
+                    movie.MediaType,
+                    "Unsupported media type.")
+            },
             Title = movie.Title,
             OriginalTitle = movie.OriginalTitle,
             Summary = movie.Summary,

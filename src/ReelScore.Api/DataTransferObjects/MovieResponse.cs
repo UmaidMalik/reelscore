@@ -62,10 +62,10 @@ public sealed class MovieResponse
         get; init;
     }
 
-    public MediaType MediaType
+    public string MediaType
     {
         get; init;
-    }
+    } = string.Empty;
 
     public int? NumberOfSeasons
     {
