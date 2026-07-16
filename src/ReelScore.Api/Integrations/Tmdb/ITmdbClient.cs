@@ -4,10 +4,20 @@ namespace ReelScore.Api.Integrations.Tmdb;
 
 public interface ITmdbClient
 {
-    Task<ExternalMovieSearchResponse> SearchMoviesAsync(
+    Task<ExternalMovieSearchResponse> SearchTitlesAsync(
         string query,
         int page,
         string language,
         int? releaseYear,
+        CancellationToken cancellationToken = default);
+
+    Task<ExternalMovieDetailsResponse?> GetMovieDetailsAsync(
+        int tmdbId,
+        string language = "en-US",
+        CancellationToken cancellationToken = default);
+
+    Task<ExternalMovieDetailsResponse?> GetTvDetailsAsync(
+        int tmdbId,
+        string language = "en-US",
         CancellationToken cancellationToken = default);
 }

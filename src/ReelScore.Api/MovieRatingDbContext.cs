@@ -81,8 +81,52 @@ public sealed class MovieRatingDbContext : DbContext
             .HasMaxLength(5000);
 
         movie.Property(entity => entity.ReleaseYear)
-            .HasColumnName("release_year")
+            .HasColumnName("release_year");
+
+        movie.Property(entity => entity.TmdbId)
+            .HasColumnName("tmdb_id");
+
+        movie.Property(entity => entity.OriginalTitle)
+            .HasColumnName("original_title")
+            .HasMaxLength(255);
+
+        movie.Property(entity => entity.ReleaseDate)
+            .HasColumnName("release_date");
+
+        movie.Property(entity => entity.RuntimeMinutes)
+            .HasColumnName("runtime_minutes");
+
+        movie.Property(entity => entity.PosterPath)
+            .HasColumnName("poster_path")
+            .HasMaxLength(500);
+
+        movie.Property(entity => entity.BackdropPath)
+            .HasColumnName("backdrop_path")
+            .HasMaxLength(500);
+
+        movie.Property(entity => entity.Genres)
+            .HasColumnName("genres")
+            .HasColumnType("text[]")
             .IsRequired();
+
+        movie.HasIndex(entity => new
+        {
+            entity.TmdbId,
+            entity.MediaType
+        })
+            .IsUnique();
+
+        movie.Property(entity => entity.MediaType)
+            .HasColumnName("media_type")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        movie.Property(entity => entity.NumberOfSeasons)
+            .HasColumnName("number_of_seasons");
+
+        movie.Property(entity => entity.NumberOfEpisodes)
+            .HasColumnName("number_of_episodes");
     }
 
     private static void ConfigureRatings(ModelBuilder modelBuilder)

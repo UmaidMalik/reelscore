@@ -57,7 +57,7 @@ public sealed class MovieRepository : IMovieRepository
         if (releaseYear.HasValue)
         {
             query = query.Where(movie =>
-                movie.ReleaseYear == releaseYear.Value);
+                movie.ReleaseYear == releaseYear);
         }
 
         return await query
@@ -129,6 +129,33 @@ public sealed class MovieRepository : IMovieRepository
     {
         return _context.Movies.AnyAsync(
             movie => movie.MovieId == movieId,
+            cancellationToken);
+    }
+
+    public async Task<Movie?> GetByTmdbIdentityAsync(
+        int tmdbId,
+        MediaType mediaType,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.Movies
+            .AsNoTracking()
+            .Include(movie => movie.Ratings)
+            .FirstOrDefaultAsync(
+                movie =>
+                    movie.TmdbId == tmdbId &&
+                    movie.MediaType == mediaType,
+                cancellationToken);
+    }
+
+    public Task<bool> TmdbTitleExistsAsync(
+        int tmdbId,
+        MediaType mediaType,
+        CancellationToken cancellationToken = default)
+    {
+        return _context.Movies.AnyAsync(
+            movie =>
+                movie.TmdbId == tmdbId &&
+                movie.MediaType == mediaType,
             cancellationToken);
     }
 }

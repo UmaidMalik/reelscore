@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ReelScore.Api.DataTransferObjects;
+using ReelScore.Api.Models;
 using ReelScore.Api.Services;
 
 namespace ReelScore.Api.Controllers;
@@ -113,4 +114,104 @@ public sealed class MovieController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("import/{mediaType}/{tmdbId:int}")]
+    [ProducesResponseType(
+        typeof(MovieResponse),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<MovieResponse>> ImportTitle(
+        string mediaType,
+        int tmdbId,
+        [FromQuery] string language = "en-US",
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryParseMediaType(
+                mediaType,
+                out var parsedMediaType))
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Media type must be either 'movie' or 'tv'."
+            });
+        }
+
+        var result = await _movieService.ImportTitleAsync(
+            tmdbId,
+            parsedMediaType,
+            language,
+            cancellationToken);
+
+        if (result.Status ==
+            ImportMovieStatus.ExternalMovieNotFound)
+        {
+            return NotFound(new
+            {
+                message =
+                    $"TMDB {mediaType} with ID {tmdbId} was not found."
+            });
+        }
+
+        if (result.Status ==
+            ImportMovieStatus.InvalidMovieData)
+        {
+            return UnprocessableEntity(new
+            {
+                message =
+                    "The external title does not contain the required information."
+            });
+        }
+
+        if (result.Status ==
+            ImportMovieStatus.AlreadyImported)
+        {
+            return Conflict(new
+            {
+                message =
+                    "This title already exists in the ReelScore library.",
+                title = result.Movie
+            });
+        }
+
+        var importedTitle = result.Movie!;
+
+        return CreatedAtAction(
+            nameof(GetMovie),
+            new
+            {
+                movieId = importedTitle.MovieId
+            },
+            importedTitle);
+    }
+
+    private static bool TryParseMediaType(
+        string value,
+        out MediaType mediaType)
+    {
+        if (string.Equals(
+                value,
+                "movie",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            mediaType = MediaType.Movie;
+            return true;
+        }
+
+        if (string.Equals(
+                value,
+                "tv",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            mediaType = MediaType.TvSeries;
+            return true;
+        }
+
+        mediaType = default;
+        return false;
+    }
+
 }

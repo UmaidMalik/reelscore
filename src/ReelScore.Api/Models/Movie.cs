@@ -13,10 +13,23 @@ public class Movie
         get; set;
     }
 
+    [Column("tmdb_id")]
+    public int? TmdbId
+    {
+        get; set;
+    }
+
     [Required]
     [StringLength(255)]
     [Column("title")]
     public string Title { get; set; } = string.Empty;
+
+    [StringLength(255)]
+    [Column("original_title")]
+    public string? OriginalTitle
+    {
+        get; set;
+    }
 
     [StringLength(5000)]
     [Column("summary")]
@@ -25,56 +38,62 @@ public class Movie
         get; set;
     }
 
-    [Required]
-    [Range(1888, 2100)]
-    [Column("release_year")]
-    public int ReleaseYear
+    [Column("release_date")]
+    public DateOnly? ReleaseDate
     {
         get; set;
     }
 
-    public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
-
-    public Movie(long movieId, string title, string summary, int releaseYear)
+    [Required]
+    [Range(1888, 2100)]
+    [Column("release_year")]
+    public int? ReleaseYear
     {
-        MovieId = movieId;
-        Title = title;
-        Summary = summary;
-        ReleaseYear = releaseYear;
+        get; set;
     }
 
-    public Movie(string title, string summary, int releaseYear)
+    [Column("runtime_minutes")]
+    public int? RuntimeMinutes
     {
-        Title = title;
-        Summary = summary;
-        ReleaseYear = releaseYear;
+        get; set;
     }
 
-    public Movie()
+    [StringLength(500)]
+    [Column("poster_path")]
+    public string? PosterPath
     {
+        get; set;
     }
 
-    public override string ToString()
+    [StringLength(500)]
+    [Column("backdrop_path")]
+    public string? BackdropPath
     {
-        return $"MovieId: {MovieId}, Title: {Title}, Summary: {Summary}, ReleaseYear: {ReleaseYear}";
+        get; set;
     }
 
-    public override bool Equals(object? obj)
-    {
-        if (obj == null || GetType() != obj.GetType())
-        {
-            return false;
-        }
+    [Column("genres", TypeName = "text[]")]
+    public string[] Genres { get; set; } = Array.Empty<string>();
 
-        Movie movie = (Movie)obj;
-        return MovieId == movie.MovieId
-            && Title == movie.Title
-            && Summary == movie.Summary
-            && ReleaseYear == movie.ReleaseYear;
+    [Required]
+    [Column("media_type")]
+    public MediaType MediaType { get; set; } = MediaType.Movie;
+
+    [Column("number_of_seasons")]
+    public int? NumberOfSeasons
+    {
+        get; set;
     }
 
-    public override int GetHashCode()
+    [Column("number_of_episodes")]
+    public int? NumberOfEpisodes
     {
-        return HashCode.Combine(MovieId, Title, Summary, ReleaseYear);
+        get; set;
     }
+
+    public ICollection<Rating> Ratings
+    {
+        get; set;
+    } =
+        new List<Rating>();
 }

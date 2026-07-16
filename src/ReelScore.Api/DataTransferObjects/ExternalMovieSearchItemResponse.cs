@@ -7,6 +7,8 @@ public sealed class ExternalMovieSearchItemResponse
         get; init;
     }
 
+    public string MediaType { get; init; } = string.Empty;
+
     public string Title { get; init; } = string.Empty;
 
     public string OriginalTitle { get; init; } = string.Empty;

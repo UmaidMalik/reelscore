@@ -17,7 +17,7 @@ namespace ReelScore.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.18")
+                .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -31,9 +31,52 @@ namespace ReelScore.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("MovieId"));
 
-                    b.Property<int>("ReleaseYear")
+                    b.Property<string>("BackdropPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("backdrop_path");
+
+                    b.Property<string[]>("Genres")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("genres");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("media_type");
+
+                    b.Property<int?>("NumberOfEpisodes")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_episodes");
+
+                    b.Property<int?>("NumberOfSeasons")
+                        .HasColumnType("integer")
+                        .HasColumnName("number_of_seasons");
+
+                    b.Property<string>("OriginalTitle")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("original_title");
+
+                    b.Property<string>("PosterPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("poster_path");
+
+                    b.Property<DateOnly?>("ReleaseDate")
+                        .HasColumnType("date")
+                        .HasColumnName("release_date");
+
+                    b.Property<int?>("ReleaseYear")
+                        .IsRequired()
                         .HasColumnType("integer")
                         .HasColumnName("release_year");
+
+                    b.Property<int?>("RuntimeMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("runtime_minutes");
 
                     b.Property<string>("Summary")
                         .HasMaxLength(5000)
@@ -46,7 +89,14 @@ namespace ReelScore.Api.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("title");
 
+                    b.Property<int?>("TmdbId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tmdb_id");
+
                     b.HasKey("MovieId");
+
+                    b.HasIndex("TmdbId", "MediaType")
+                        .IsUnique();
 
                     b.ToTable("movies", (string)null);
                 });

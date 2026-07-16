@@ -1,0 +1,69 @@
+import { CalendarDays, Star } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { MoviePoster } from "@/components/movies/MoviePoster";
+import type { ExternalMovieSearchItem } from "@/types/movies";
+import { Link } from "react-router";
+
+type ExternalMovieCardProps = {
+  movie: ExternalMovieSearchItem;
+};
+
+export function ExternalMovieCard({
+  movie,
+}: ExternalMovieCardProps) {
+  return (
+    <Card className="group flex h-full flex-col overflow-hidden border-border/70 bg-card py-0 transition hover:-translate-y-1 hover:border-orange-500/50 hover:shadow-lg">
+      <div className="relative overflow-hidden">
+        <MoviePoster
+          src={movie.posterUrl}
+          alt={`${movie.title} poster`}
+        />
+
+        <Badge className="absolute top-3 right-3 bg-black/75 text-white">
+          <Star className="size-3 fill-orange-400 text-orange-400" />
+          {movie.tmdbScore.toFixed(1)}
+        </Badge>
+
+        <Badge
+        variant="secondary"
+        className="absolute top-3 left-3 bg-black/75 text-white"
+        >
+        {movie.mediaType === "movie" ? "Movie" : "TV Series"}
+        </Badge>
+      </div>
+
+      <CardContent className="space-y-2 p-4">
+        <div>
+          <h2 className="line-clamp-1 font-semibold">
+            {movie.title}
+          </h2>
+
+          {movie.originalTitle !== movie.title && (
+            <p className="line-clamp-1 text-xs text-muted-foreground">
+              {movie.originalTitle}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <CalendarDays className="size-4" />
+          <span>{movie.releaseYear ?? "Unknown year"}</span>
+        </div>
+
+        <p className="line-clamp-3 text-sm text-muted-foreground">
+          {movie.overview || "No overview is available."}
+        </p>
+      </CardContent>
+
+      <CardFooter className="mt-auto p-4 pt-0">
+        <Link
+        to={`/external/${movie.mediaType}/${movie.tmdbId}`}
+        className="inline-flex h-9 w-full items-center justify-center rounded-md bg-orange-500 px-4 text-sm font-medium text-white transition-colors hover:bg-orange-600"
+        >
+        View details
+        </Link>
+      </CardFooter>
+    </Card>
+  );
+}

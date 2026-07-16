@@ -12,9 +12,9 @@ public sealed class TmdbClientTests
     private const string ImageBaseUrl = "https://image.tmdb.org/t/p/";
 
     [Fact]
-    public async Task SearchMoviesAsync_WhenSuccessful_MapsResponse()
+    public async Task SearchTitlesAsync_WhenSuccessful_MapsMovieAndTvResults()
     {
-        const string responseJson = """
+        const string movieResponseJson = """
         {
           "page": 1,
           "total_pages": 3,
@@ -26,8 +26,8 @@ public sealed class TmdbClientTests
               "original_title": "Alien",
               "overview": "A space crew encounters a dangerous lifeform.",
               "release_date": "1979-05-25",
-              "poster_path": "/poster.jpg",
-              "backdrop_path": "/backdrop.jpg",
+              "poster_path": "/alien-poster.jpg",
+              "backdrop_path": "/alien-backdrop.jpg",
               "genre_ids": [27, 878],
               "original_language": "en",
               "popularity": 91.5,
@@ -39,54 +39,70 @@ public sealed class TmdbClientTests
         }
         """;
 
-        using var httpClient = CreateHttpClient(
-            (_, _) => CreateJsonResponse(
-                HttpStatusCode.OK,
-                responseJson));
+        const string tvResponseJson = """
+        {
+          "page": 1,
+          "total_pages": 2,
+          "total_results": 18,
+          "results": [
+            {
+              "id": 1396,
+              "name": "Breaking Bad",
+              "original_name": "Breaking Bad",
+              "overview": "A chemistry teacher enters the drug trade.",
+              "first_air_date": "2008-01-20",
+              "poster_path": "/breaking-bad-poster.jpg",
+              "backdrop_path": "/breaking-bad-backdrop.jpg",
+              "genre_ids": [18, 80],
+              "original_language": "en",
+              "popularity": 120.4,
+              "vote_average": 8.9,
+              "vote_count": 14000,
+              "adult": false
+            }
+          ]
+        }
+        """;
+
+        using var httpClient = CreateSearchHttpClient(
+            movieResponseJson,
+            tvResponseJson);
 
         var client = CreateTmdbClient(httpClient);
 
-        var result = await client.SearchMoviesAsync(
+        var result = await client.SearchTitlesAsync(
             "Alien",
             1,
             "en-US",
             null);
 
-        var movie = Assert.Single(result.Results);
-
         Assert.Equal(1, result.Page);
         Assert.Equal(3, result.TotalPages);
-        Assert.Equal(42, result.TotalResults);
+        Assert.Equal(60, result.TotalResults);
+        Assert.Equal(2, result.Results.Count);
 
+        var tvShow = result.Results.First();
+        var movie = result.Results.Last();
+
+        Assert.Equal("tv", tvShow.MediaType);
+        Assert.Equal(1396, tvShow.TmdbId);
+        Assert.Equal("Breaking Bad", tvShow.Title);
+        Assert.Equal(new DateOnly(2008, 1, 20), tvShow.ReleaseDate);
+        Assert.Equal(2008, tvShow.ReleaseYear);
+        Assert.Equal(8.9, tvShow.TmdbScore);
+
+        Assert.Equal("movie", movie.MediaType);
         Assert.Equal(348, movie.TmdbId);
         Assert.Equal("Alien", movie.Title);
-        Assert.Equal("Alien", movie.OriginalTitle);
-        Assert.Equal(
-            "A space crew encounters a dangerous lifeform.",
-            movie.Overview);
-
         Assert.Equal(new DateOnly(1979, 5, 25), movie.ReleaseDate);
         Assert.Equal(1979, movie.ReleaseYear);
-
-        Assert.Equal(
-            "https://image.tmdb.org/t/p/w500/poster.jpg",
-            movie.PosterUrl);
-
-        Assert.Equal(
-            "https://image.tmdb.org/t/p/w1280/backdrop.jpg",
-            movie.BackdropUrl);
-
-        Assert.Equal(new[] { 27, 878 }, movie.GenreIds);
-        Assert.Equal("en", movie.OriginalLanguage);
-        Assert.Equal(91.5, movie.Popularity);
         Assert.Equal(8.2, movie.TmdbScore);
-        Assert.Equal(15000, movie.TmdbVoteCount);
     }
 
     [Fact]
-    public async Task SearchMoviesAsync_FiltersAdultResults()
+    public async Task SearchTitlesAsync_FiltersAdultMovieAndTvResults()
     {
-        const string responseJson = """
+        const string movieResponseJson = """
         {
           "page": 1,
           "total_pages": 1,
@@ -126,31 +142,76 @@ public sealed class TmdbClientTests
         }
         """;
 
-        using var httpClient = CreateHttpClient(
-            (_, _) => CreateJsonResponse(
-                HttpStatusCode.OK,
-                responseJson));
+        const string tvResponseJson = """
+        {
+          "page": 1,
+          "total_pages": 1,
+          "total_results": 2,
+          "results": [
+            {
+              "id": 3,
+              "name": "Visible Show",
+              "original_name": "Visible Show",
+              "overview": "",
+              "first_air_date": "2021-01-01",
+              "poster_path": null,
+              "backdrop_path": null,
+              "genre_ids": [],
+              "original_language": "en",
+              "popularity": 2,
+              "vote_average": 8,
+              "vote_count": 20,
+              "adult": false
+            },
+            {
+              "id": 4,
+              "name": "Filtered Show",
+              "original_name": "Filtered Show",
+              "overview": "",
+              "first_air_date": "2021-01-01",
+              "poster_path": null,
+              "backdrop_path": null,
+              "genre_ids": [],
+              "original_language": "en",
+              "popularity": 2,
+              "vote_average": 8,
+              "vote_count": 20,
+              "adult": true
+            }
+          ]
+        }
+        """;
+
+        using var httpClient = CreateSearchHttpClient(
+            movieResponseJson,
+            tvResponseJson);
 
         var client = CreateTmdbClient(httpClient);
 
-        var result = await client.SearchMoviesAsync(
-            "Movie",
+        var result = await client.SearchTitlesAsync(
+            "Visible",
             1,
             "en-US",
             null);
 
-        var movie = Assert.Single(result.Results);
+        Assert.Equal(2, result.Results.Count);
+        Assert.Contains(
+            result.Results,
+            item => item.Title == "Visible Movie"
+                && item.MediaType == "movie");
 
-        Assert.Equal(1, movie.TmdbId);
-        Assert.Equal("Visible Movie", movie.Title);
+        Assert.Contains(
+            result.Results,
+            item => item.Title == "Visible Show"
+                && item.MediaType == "tv");
     }
 
     [Fact]
-    public async Task SearchMoviesAsync_BuildsExpectedQueryParameters()
+    public async Task SearchTitlesAsync_BuildsExpectedMovieAndTvQueryParameters()
     {
-        Uri? capturedRequestUri = null;
+        var capturedRequestUris = new List<Uri>();
 
-        const string responseJson = """
+        const string emptyResponseJson = """
         {
           "page": 2,
           "total_pages": 2,
@@ -162,60 +223,52 @@ public sealed class TmdbClientTests
         using var httpClient = CreateHttpClient(
             (request, _) =>
             {
-                capturedRequestUri = request.RequestUri;
+                Assert.NotNull(request.RequestUri);
+                capturedRequestUris.Add(request.RequestUri);
 
                 return CreateJsonResponse(
                     HttpStatusCode.OK,
-                    responseJson);
+                    emptyResponseJson);
             });
 
         var client = CreateTmdbClient(httpClient);
 
-        await client.SearchMoviesAsync(
+        await client.SearchTitlesAsync(
             "Alien & Aliens",
             2,
             "fr-CA",
             1979);
 
-        Assert.NotNull(capturedRequestUri);
+        Assert.Equal(2, capturedRequestUris.Count);
 
-        var requestUrl = capturedRequestUri.AbsoluteUri;
+        var movieRequest = capturedRequestUris.Single(
+            uri => uri.AbsolutePath.EndsWith(
+                "/search/movie",
+                StringComparison.Ordinal));
 
-        Assert.Contains(
-            "search/movie?",
-            requestUrl,
-            StringComparison.Ordinal);
+        var tvRequest = capturedRequestUris.Single(
+            uri => uri.AbsolutePath.EndsWith(
+                "/search/tv",
+                StringComparison.Ordinal));
 
-        Assert.Contains(
-            "query=Alien%20%26%20Aliens",
-            requestUrl,
-            StringComparison.Ordinal);
-
-        Assert.Contains(
-            "page=2",
-            requestUrl,
-            StringComparison.Ordinal);
-
-        Assert.Contains(
-            "language=fr-CA",
-            requestUrl,
-            StringComparison.Ordinal);
-
-        Assert.Contains(
-            "include_adult=false",
-            requestUrl,
-            StringComparison.Ordinal);
+        AssertCommonSearchParameters(movieRequest);
+        AssertCommonSearchParameters(tvRequest);
 
         Assert.Contains(
             "primary_release_year=1979",
-            requestUrl,
+            movieRequest.AbsoluteUri,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "first_air_date_year=1979",
+            tvRequest.AbsoluteUri,
             StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task SearchMoviesAsync_WhenImagePathsAreMissing_ReturnsNullUrls()
+    public async Task SearchTitlesAsync_WhenImagePathsAreMissing_ReturnsNullUrls()
     {
-        const string responseJson = """
+        const string movieResponseJson = """
         {
           "page": 1,
           "total_pages": 1,
@@ -240,14 +293,22 @@ public sealed class TmdbClientTests
         }
         """;
 
-        using var httpClient = CreateHttpClient(
-            (_, _) => CreateJsonResponse(
-                HttpStatusCode.OK,
-                responseJson));
+        const string tvResponseJson = """
+        {
+          "page": 1,
+          "total_pages": 1,
+          "total_results": 0,
+          "results": []
+        }
+        """;
+
+        using var httpClient = CreateSearchHttpClient(
+            movieResponseJson,
+            tvResponseJson);
 
         var client = CreateTmdbClient(httpClient);
 
-        var result = await client.SearchMoviesAsync(
+        var result = await client.SearchTitlesAsync(
             "No Images",
             1,
             "en-US",
@@ -262,39 +323,55 @@ public sealed class TmdbClientTests
     }
 
     [Fact]
-    public async Task SearchMoviesAsync_WhenTmdbReturnsNull_ThrowsInvalidOperationException()
+    public async Task SearchTitlesAsync_WhenMovieResponseIsNull_ThrowsInvalidOperationException()
     {
-        using var httpClient = CreateHttpClient(
-            (_, _) => CreateJsonResponse(
-                HttpStatusCode.OK,
-                "null"));
+        const string tvResponseJson = """
+        {
+          "page": 1,
+          "total_pages": 1,
+          "total_results": 0,
+          "results": []
+        }
+        """;
+
+        using var httpClient = CreateSearchHttpClient(
+            "null",
+            tvResponseJson);
 
         var client = CreateTmdbClient(httpClient);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.SearchMoviesAsync(
+            () => client.SearchTitlesAsync(
                 "Alien",
                 1,
                 "en-US",
                 null));
 
         Assert.Equal(
-            "TMDB returned an empty or invalid response.",
+            "TMDB returned an empty or invalid search response.",
             exception.Message);
     }
 
     [Fact]
-    public async Task SearchMoviesAsync_WhenTmdbReturnsFailure_ThrowsHttpRequestException()
+    public async Task SearchTitlesAsync_WhenTvResponseIsNull_ThrowsInvalidOperationException()
     {
-        using var httpClient = CreateHttpClient(
-            (_, _) => Task.FromResult(
-                new HttpResponseMessage(
-                    HttpStatusCode.ServiceUnavailable)));
+        const string movieResponseJson = """
+        {
+          "page": 1,
+          "total_pages": 1,
+          "total_results": 0,
+          "results": []
+        }
+        """;
+
+        using var httpClient = CreateSearchHttpClient(
+            movieResponseJson,
+            "null");
 
         var client = CreateTmdbClient(httpClient);
 
-        await Assert.ThrowsAsync<HttpRequestException>(
-            () => client.SearchMoviesAsync(
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.SearchTitlesAsync(
                 "Alien",
                 1,
                 "en-US",
@@ -302,7 +379,44 @@ public sealed class TmdbClientTests
     }
 
     [Fact]
-    public async Task SearchMoviesAsync_WhenCancelled_ThrowsOperationCancelledException()
+    public async Task SearchTitlesAsync_WhenEitherRequestFails_ThrowsHttpRequestException()
+    {
+        using var httpClient = CreateHttpClient(
+            (request, _) =>
+            {
+                if (request.RequestUri?.AbsolutePath.EndsWith(
+                        "/search/movie",
+                        StringComparison.Ordinal) == true)
+                {
+                    return CreateJsonResponse(
+                        HttpStatusCode.OK,
+                        """
+                        {
+                          "page": 1,
+                          "total_pages": 1,
+                          "total_results": 0,
+                          "results": []
+                        }
+                        """);
+                }
+
+                return Task.FromResult(
+                    new HttpResponseMessage(
+                        HttpStatusCode.ServiceUnavailable));
+            });
+
+        var client = CreateTmdbClient(httpClient);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => client.SearchTitlesAsync(
+                "Alien",
+                1,
+                "en-US",
+                null));
+    }
+
+    [Fact]
+    public async Task SearchTitlesAsync_WhenCancelled_ThrowsOperationCancelledException()
     {
         using var httpClient = CreateHttpClient(
             async (_, cancellationToken) =>
@@ -322,12 +436,325 @@ public sealed class TmdbClientTests
         cancellationTokenSource.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => client.SearchMoviesAsync(
+            () => client.SearchTitlesAsync(
                 "Alien",
                 1,
                 "en-US",
                 null,
                 cancellationTokenSource.Token));
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_WhenSuccessful_MapsResponse()
+    {
+        const string responseJson = """
+        {
+        "id": 1396,
+        "name": "Breaking Bad",
+        "original_name": "Breaking Bad",
+        "overview": "A chemistry teacher enters the drug trade.",
+        "first_air_date": "2008-01-20",
+        "episode_run_time": [47, 55],
+        "number_of_seasons": 5,
+        "number_of_episodes": 62,
+        "poster_path": "/breaking-bad-poster.jpg",
+        "backdrop_path": "/breaking-bad-backdrop.jpg",
+        "genres": [
+            {
+            "id": 18,
+            "name": "Drama"
+            },
+            {
+            "id": 80,
+            "name": "Crime"
+            }
+        ],
+        "original_language": "en",
+        "vote_average": 8.913,
+        "vote_count": 14000,
+        "adult": false,
+        "status": "Ended"
+        }
+        """;
+
+        using var httpClient = CreateHttpClient(
+            (request, _) =>
+            {
+                Assert.Equal(
+                    "/3/tv/1396",
+                    request.RequestUri?.AbsolutePath);
+
+                return CreateJsonResponse(
+                    HttpStatusCode.OK,
+                    responseJson);
+            });
+
+        var client = CreateTmdbClient(httpClient);
+
+        var result = await client.GetTvDetailsAsync(
+            1396,
+            "en-US");
+
+        Assert.NotNull(result);
+
+        Assert.Equal(1396, result.TmdbId);
+        Assert.Equal("tv", result.MediaType);
+        Assert.Equal("Breaking Bad", result.Title);
+        Assert.Equal("Breaking Bad", result.OriginalTitle);
+        Assert.Equal(
+            "A chemistry teacher enters the drug trade.",
+            result.Overview);
+
+        Assert.Equal(
+            new DateOnly(2008, 1, 20),
+            result.ReleaseDate);
+
+        Assert.Equal(2008, result.ReleaseYear);
+        Assert.Equal(47, result.RuntimeMinutes);
+        Assert.Equal(5, result.NumberOfSeasons);
+        Assert.Equal(62, result.NumberOfEpisodes);
+
+        Assert.Equal(
+            "/breaking-bad-poster.jpg",
+            result.PosterPath);
+
+        Assert.Equal(
+            "https://image.tmdb.org/t/p/w500/breaking-bad-poster.jpg",
+            result.PosterUrl);
+
+        Assert.Equal(
+            "/breaking-bad-backdrop.jpg",
+            result.BackdropPath);
+
+        Assert.Equal(
+            "https://image.tmdb.org/t/p/w1280/breaking-bad-backdrop.jpg",
+            result.BackdropUrl);
+
+        Assert.Equal(
+            new[] { "Crime", "Drama" },
+            result.Genres);
+
+        Assert.Equal("en", result.OriginalLanguage);
+        Assert.Equal(8.9, result.TmdbScore);
+        Assert.Equal(14000, result.TmdbVoteCount);
+        Assert.Equal("Ended", result.Status);
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_UsesFirstPositiveEpisodeRuntime()
+    {
+        const string responseJson = """
+        {
+        "id": 1,
+        "name": "Runtime Show",
+        "original_name": "Runtime Show",
+        "overview": "",
+        "first_air_date": "2020-01-01",
+        "episode_run_time": [0, -5, 42, 50],
+        "number_of_seasons": 2,
+        "number_of_episodes": 20,
+        "poster_path": null,
+        "backdrop_path": null,
+        "genres": [],
+        "original_language": "en",
+        "vote_average": 7,
+        "vote_count": 100,
+        "adult": false,
+        "status": "Returning Series"
+        }
+        """;
+
+        using var httpClient = CreateHttpClient(
+            (_, _) => CreateJsonResponse(
+                HttpStatusCode.OK,
+                responseJson));
+
+        var client = CreateTmdbClient(httpClient);
+
+        var result = await client.GetTvDetailsAsync(1);
+
+        Assert.NotNull(result);
+        Assert.Equal(42, result.RuntimeMinutes);
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_WhenOptionalMetadataIsMissing_ReturnsNullValues()
+    {
+        const string responseJson = """
+        {
+        "id": 2,
+        "name": "Unknown Show",
+        "original_name": "Unknown Show",
+        "overview": "",
+        "first_air_date": "",
+        "episode_run_time": [],
+        "number_of_seasons": 0,
+        "number_of_episodes": 0,
+        "poster_path": null,
+        "backdrop_path": null,
+        "genres": [],
+        "original_language": "en",
+        "vote_average": 0,
+        "vote_count": 0,
+        "adult": false,
+        "status": ""
+        }
+        """;
+
+        using var httpClient = CreateHttpClient(
+            (_, _) => CreateJsonResponse(
+                HttpStatusCode.OK,
+                responseJson));
+
+        var client = CreateTmdbClient(httpClient);
+
+        var result = await client.GetTvDetailsAsync(2);
+
+        Assert.NotNull(result);
+
+        Assert.Null(result.ReleaseDate);
+        Assert.Null(result.ReleaseYear);
+        Assert.Null(result.RuntimeMinutes);
+        Assert.Null(result.PosterPath);
+        Assert.Null(result.PosterUrl);
+        Assert.Null(result.BackdropPath);
+        Assert.Null(result.BackdropUrl);
+        Assert.Null(result.Status);
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_WhenNotFound_ReturnsNull()
+    {
+        using var httpClient = CreateHttpClient(
+            (_, _) => Task.FromResult(
+                new HttpResponseMessage(
+                    HttpStatusCode.NotFound)));
+
+        var client = CreateTmdbClient(httpClient);
+
+        var result = await client.GetTvDetailsAsync(
+            999999);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_WhenResponseIsNull_ThrowsInvalidOperationException()
+    {
+        using var httpClient = CreateHttpClient(
+            (_, _) => CreateJsonResponse(
+                HttpStatusCode.OK,
+                "null"));
+
+        var client = CreateTmdbClient(httpClient);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.GetTvDetailsAsync(1396));
+
+        Assert.Equal(
+            "TMDB returned an empty or invalid TV-details response.",
+            exception.Message);
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_WhenProviderFails_ThrowsHttpRequestException()
+    {
+        using var httpClient = CreateHttpClient(
+            (_, _) => Task.FromResult(
+                new HttpResponseMessage(
+                    HttpStatusCode.ServiceUnavailable)));
+
+        var client = CreateTmdbClient(httpClient);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => client.GetTvDetailsAsync(1396));
+    }
+
+    [Fact]
+    public async Task GetTvDetailsAsync_WhenCancelled_ThrowsOperationCancelledException()
+    {
+        using var httpClient = CreateHttpClient(
+            async (_, cancellationToken) =>
+            {
+                await Task.Delay(
+                    Timeout.InfiniteTimeSpan,
+                    cancellationToken);
+
+                return new HttpResponseMessage(
+                    HttpStatusCode.OK);
+            });
+
+        var client = CreateTmdbClient(httpClient);
+
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
+
+        cancellationTokenSource.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => client.GetTvDetailsAsync(
+                1396,
+                "en-US",
+                cancellationTokenSource.Token));
+    }
+
+    private static void AssertCommonSearchParameters(
+        Uri requestUri)
+    {
+        var requestUrl = requestUri.AbsoluteUri;
+
+        Assert.Contains(
+            "query=Alien%20%26%20Aliens",
+            requestUrl,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "page=2",
+            requestUrl,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "language=fr-CA",
+            requestUrl,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "include_adult=false",
+            requestUrl,
+            StringComparison.Ordinal);
+    }
+
+    private static HttpClient CreateSearchHttpClient(
+        string movieResponseJson,
+        string tvResponseJson)
+    {
+        return CreateHttpClient(
+            (request, _) =>
+            {
+                var path = request.RequestUri?.AbsolutePath;
+
+                if (path?.EndsWith(
+                        "/search/movie",
+                        StringComparison.Ordinal) == true)
+                {
+                    return CreateJsonResponse(
+                        HttpStatusCode.OK,
+                        movieResponseJson);
+                }
+
+                if (path?.EndsWith(
+                        "/search/tv",
+                        StringComparison.Ordinal) == true)
+                {
+                    return CreateJsonResponse(
+                        HttpStatusCode.OK,
+                        tvResponseJson);
+                }
+
+                return Task.FromResult(
+                    new HttpResponseMessage(
+                        HttpStatusCode.NotFound));
+            });
     }
 
     private static TmdbClient CreateTmdbClient(
@@ -395,7 +822,9 @@ public sealed class TmdbClientTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            return _handler(request, cancellationToken);
+            return _handler(
+                request,
+                cancellationToken);
         }
     }
 }

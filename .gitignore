@@ -19,3 +19,21 @@ appsettings.Local.json
 # Generated publish artifacts
 artifacts/
 TestResults/
+
+# Frontend dependencies
+src/ReelScore.Web/node_modules/
+
+# Frontend build output
+src/ReelScore.Web/dist/
+
+# Frontend local environment files
+src/ReelScore.Web/.env
+src/ReelScore.Web/.env.local
+src/ReelScore.Web/.env.*.local
+
+# Vite / TypeScript cache
+src/ReelScore.Web/.vite/
+src/ReelScore.Web/*.tsbuildinfo
+
+# Test coverage
+src/ReelScore.Web/coverage/
